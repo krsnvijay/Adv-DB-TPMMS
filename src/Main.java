@@ -13,7 +13,7 @@ public class Main {
         TPMMS tpmms = new TPMMS();
         Runtime run = Runtime.getRuntime();
         long free = run.freeMemory();
-        tpmms.sortFile(args[0],free);
+        tpmms.sortFile(args[0]);
         run = Runtime.getRuntime();
         free = run.freeMemory();
         long total = run.totalMemory();
