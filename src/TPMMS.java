@@ -23,18 +23,19 @@ public class TPMMS {
     long fileSize = inpFile.length();
     double numOfRecords = fileSize/SIZE_OF_RECORD;
 
-    long totalNumOfPages = (long)Math.floor(MemoryHandler.getInstance().getTotalMemory()/numOfRecords);
-    int numOfTuplesPerPage = (int)Math.floor(numOfRecords/totalNumOfPages);
+    long totalNumOfPages = (long) Math.floor(MemoryHandler.getInstance().getFreeMemory()/numOfRecords);
+    int numOfTuplesPerPage = (int) Math.floor(numOfRecords/(totalNumOfPages*5f));
 
-    String line = reader.readLine();
+    //String line = reader.readLine();
     ArrayList<String> lines = new ArrayList<>();
 
     System.out.println(fileSize+" "+numOfRecords+" "+totalNumOfPages+" "+numOfTuplesPerPage);
-    while (line != null) {
-      lines.add(line);
+    //numOfTuplesPerPage = 40;
+    while (reader.readLine() != null) {
+      lines.add(reader.readLine());
+
       if (lines.size() == numOfTuplesPerPage) {
         // Block Limit reached
-
         // sort the block based on id , date
         Comparator<String> empIdComparator = Comparator
             .comparing((String record) -> Integer.parseInt(record.substring(0, 8)));
@@ -50,7 +51,8 @@ public class TPMMS {
         writer.append(opString);
         opString.delete(0, opString.length());
       }
-      line = reader.readLine();
+//      System.out.println("Free memory: " + MemoryHandler.getInstance().getFreeMemory());
+      //line = reader.readLine();
     }
     reader.close();
     writer.close();

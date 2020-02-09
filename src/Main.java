@@ -1,4 +1,7 @@
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Scanner;
 
 public class Main {
 
@@ -9,11 +12,13 @@ public class Main {
             System.out.println("usage: Main <path to t1> <path to t2>");
             System.exit(-1);
         }
-
+        Instant start = Instant.now();
         TPMMS tpmms = new TPMMS();
         Runtime run = Runtime.getRuntime();
         long free = run.freeMemory();
         tpmms.sortFile(args[0]);
+        Instant end = Instant.now();
+        System.out.println("Exec time: " + Duration.between(start, end).toMillis() + "ms");
         run = Runtime.getRuntime();
         free = run.freeMemory();
         long total = run.totalMemory();
