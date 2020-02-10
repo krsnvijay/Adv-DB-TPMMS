@@ -37,7 +37,7 @@ public class TPMMS {
     }
   }
 
-  private static boolean shouldSwap(char[] record1, char[] record2) {
+  private boolean shouldSwap(char[] record1, char[] record2) {
     if(Integer.parseInt(new String(record1,0,8)) <
             Integer.parseInt(new String(record2, 0, 8))) return true;
 
@@ -49,7 +49,7 @@ public class TPMMS {
     return false;
   }
 
-  private static int partition(char[][] arr, int low, int high) {
+  private int partition(char[][] arr, int low, int high) {
     char[] pivot = arr[high];
     int i = (low - 1);
     for (int j = low; j <= high - 1; j++) {
@@ -67,11 +67,11 @@ public class TPMMS {
     return i + 1;
   }
 
-  public void recordSort(char[][] records, int low, int high) {
+  private void recordSort(char[][] records, int low, int high) {
     if (low < high) {
-      int pi = partition(records, low, high);
-      recordSort(records, low, pi - 1);
-      recordSort(records, pi + 1, high);
+      int pivot = partition(records, low, high);
+      recordSort(records, low, pivot - 1);
+      recordSort(records, pivot + 1, high);
     }
   }
 
@@ -82,15 +82,15 @@ public class TPMMS {
     double numOfRecords = 500000.00; // pass as cmd arg
 
     int totalNumOfPages = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory()/numOfRecords)*
-            MemoryHandler.FIVE_MB; // toy with this value
+            MemoryHandler.FIVE_MB;
     int numOfTuplesPerPage = (int) Math.floor(numOfRecords/(totalNumOfPages));
 
     char[][] lines = new char[numOfTuplesPerPage][100];
     char[] line = new char[100];
 
     int recordCounter = 0;
-    int startByte = 0;
-    int endByte = 100;
+    final int startByte = 0;
+    final int endByte = 100;
 
     while (reader.read(line, startByte, endByte) != -1) {
       System.arraycopy(line, 0, lines[recordCounter], 0, 100);
