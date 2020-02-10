@@ -5,8 +5,7 @@ import java.util.Scanner;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
-        System.out.println("TPMMS");
+    public static void main(String[] args) {
         if(args.length != 2){
             System.out.println("Pass Two Text files as arguments to perform TPMMS");
             System.out.println("usage: Main <path to t1> <path to t2>");
@@ -14,13 +13,11 @@ public class Main {
         }
         Instant start = Instant.now();
         TPMMS tpmms = new TPMMS();
-        Runtime run = Runtime.getRuntime();
-        long free = run.freeMemory();
-        tpmms.sortFile(args[0]);
+        tpmms.runTPMMS(args[0]);
         Instant end = Instant.now();
         System.out.println("Exec time: " + Duration.between(start, end).toMillis() + "ms");
-        run = Runtime.getRuntime();
-        free = run.freeMemory();
+        Runtime run = Runtime.getRuntime();
+        long free = run.freeMemory();
         long total = run.totalMemory();
         long max = run.maxMemory();
         long used = total - free;

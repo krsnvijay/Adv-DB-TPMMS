@@ -9,7 +9,27 @@ public class TPMMS {
   private static BufferedReader reader;
   private static BufferedWriter writer;
 
+  private String filePath;
+
   private File tempFile = new File("Employee-Generator/temp-file.txt");
+
+  public void runTPMMS(String filepath) {
+    this.filePath = filepath;
+    try {
+      runPhase1();
+      runPhase2();
+    } catch(IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void runPhase1() throws IOException {
+    sortFile(this.filePath);
+  }
+
+  private void runPhase2(){
+    // nothing yet
+  }
 
   private void performWrite(int recordCounter, char[][] lines) throws IOException {
     for(int i=0; i<recordCounter; i++) {
@@ -55,7 +75,7 @@ public class TPMMS {
     }
   }
 
-  public void sortFile(String filePath) throws IOException {
+  private void sortFile(String filePath) throws IOException {
     reader = new BufferedReader(new FileReader(filePath));
     writer = new BufferedWriter(new FileWriter(tempFile));
 
