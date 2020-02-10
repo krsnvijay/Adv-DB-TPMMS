@@ -81,7 +81,8 @@ public class TPMMS {
 
     double numOfRecords = 500000.00; // pass as cmd arg
 
-    long totalNumOfPages = (long) Math.floor(MemoryHandler.getInstance().getFreeMemory()/numOfRecords)*10; // toy with this value
+    int totalNumOfPages = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory()/numOfRecords)*
+            MemoryHandler.FIVE_MB; // toy with this value
     int numOfTuplesPerPage = (int) Math.floor(numOfRecords/(totalNumOfPages));
 
     char[][] lines = new char[numOfTuplesPerPage][100];
