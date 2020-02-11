@@ -1,9 +1,5 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.util.ArrayList;
 
 public class TPMMS {
   private static BufferedReader reader;
@@ -124,15 +120,15 @@ public class TPMMS {
     // Output buffer fills after 8 passes (450000 bytes per pass), then 1 disk IO occurs
     // For entire list (5 mil bytes for 500K) we have 11 disk IOs
 
-    int k = (int) Math.floor((raf.length()/SIZE_OF_RECORD)/CHUNK_SIZE);
+    int k = (int) Math.floor((raf.length()/ENDBYTE)/CHUNK_SIZE);
     long totalInputBuffer = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory() * INPUT_PERCENT);
     int inputBuffer = (int) totalInputBuffer/k;
-    int tupleCount = (int) Math.floor(inputBuffer/SIZE_OF_RECORD);
+    int tupleCount = (int) Math.floor(inputBuffer/ENDBYTE);
 
     boolean tuplesLeft = true;
     int bytePos = 0;
     int pass = 0;
-    int offset = (int) Math.floor(CHUNK_SIZE*SIZE_OF_RECORD) + (pass*tupleCount);
+    int offset = (int) Math.floor(CHUNK_SIZE*ENDBYTE) + (pass*tupleCount);
     ArrayList<String> memContents = new ArrayList<>();
     while(bytePos < raf.length()) {
       raf.seek(bytePos);
