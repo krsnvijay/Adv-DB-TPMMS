@@ -11,8 +11,8 @@ public class TPMMS {
 
   private String filePath;
 
-  private final int startByte = 0;
-  private final int endByte = System.getProperty("os.name").toLowerCase().contains("win") ? 101 : 100;
+  private final int STARTBYTE = 0;
+  private final int ENDBYTE = System.getProperty("os.name").toLowerCase().contains("win") ? 101 : 100;
 
   private File tempFile = new File("Employee-Generator/temp-file.txt");
 
@@ -88,13 +88,13 @@ public class TPMMS {
             MemoryHandler.FIVE_MB;
     int numOfTuplesPerPage = (int) Math.floor(numOfRecords/(totalNumOfPages));
 
-    char[][] lines = new char[numOfTuplesPerPage][endByte];
-    char[] line = new char[endByte];
+    char[][] lines = new char[numOfTuplesPerPage][ENDBYTE];
+    char[] line = new char[ENDBYTE];
 
     int recordCounter = 0;
 
-    while (reader.read(line, startByte, endByte) != -1) {
-      System.arraycopy(line, 0, lines[recordCounter], 0, endByte);
+    while (reader.read(line, STARTBYTE, ENDBYTE) != -1) {
+      System.arraycopy(line, 0, lines[recordCounter], 0, ENDBYTE);
       if (recordCounter == numOfTuplesPerPage-1) {
         recordSort(lines,0, recordCounter);
         performWrite(recordCounter,lines);
