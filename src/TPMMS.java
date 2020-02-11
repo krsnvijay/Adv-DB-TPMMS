@@ -88,13 +88,13 @@ public class TPMMS {
             MemoryHandler.FIVE_MB;
     int numOfTuplesPerPage = (int) Math.floor(numOfRecords/(totalNumOfPages));
 
-    char[][] lines = new char[numOfTuplesPerPage][100];
-    char[] line = new char[100];
+    char[][] lines = new char[numOfTuplesPerPage][endByte];
+    char[] line = new char[endByte];
 
     int recordCounter = 0;
 
     while (reader.read(line, startByte, endByte) != -1) {
-      System.arraycopy(line, 0, lines[recordCounter], 0, 100);
+      System.arraycopy(line, 0, lines[recordCounter], 0, endByte);
       if (recordCounter == numOfTuplesPerPage-1) {
         recordSort(lines,0, recordCounter);
         performWrite(recordCounter,lines);
