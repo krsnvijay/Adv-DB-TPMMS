@@ -15,6 +15,7 @@ public class TPMMS {
   private final int ENDBYTE = System.getProperty("os.name").toLowerCase().contains("win") ? 101 : 100;
 
   private File tempFile = new File("Employee-Generator/temp-file.txt");
+  private File finalFile = new File("Employee-Generator/sorted.txt");
 
   public void runTPMMS(String filepath) {
     this.filePath = filepath;
@@ -56,7 +57,7 @@ public class TPMMS {
     char[] pivot = arr[high];
     int i = (low - 1);
     for (int j = low; j <= high - 1; j++) {
-     if (shouldSwap(arr[j],pivot)) {
+    if (shouldSwap(arr[j],pivot)) {
         i++;
         char[] temp = arr[i];
         arr[i] = arr[j];
@@ -105,6 +106,43 @@ public class TPMMS {
     reader.close();
     writer.close();
     System.out.printf("Blocks -- %d | Tuples/block -- %d \n",totalNumOfPages,numOfTuplesPerPage);
+    
+    System.out.println("Sorted lines block wise, now merging");
+    mergeKWay(tempFile, 40, 0.6f);
+  }
+
+  public void mergeKWay(File tempFilePath, int CHUNK_SIZE, float INPUT_PERCENT) throws IOException {
+
+    RandomAccessFile raf = new RandomAccessFile(tempFilePath, "r");
+    writer = new BufferedWriter(new FileWriter(finalFile));
+
+    // TODO dynamically choose appropriate buffer size
+    // For 500K record file with 5MB heap max:
+    // 60% of 5*1024*1024 bytes (~3.1mil bytes) with 12500 lists = input buffer divided into chunks of 251 bytes each
+    // ~251 bytes per sorted list in input = 2 tuples from each list to be merged to output space (40%)
+    // [this seems wrong, I've forgotten how I got this]
+    // Output buffer fills after 8 passes (450000 bytes per pass), then 1 disk IO occurs
+    // For entire list (5 mil bytes for 500K) we have 11 disk IOs
+
+    int k = (int) Math.floor((raf.length()/SIZE_OF_RECORD)/CHUNK_SIZE);
+    long totalInputBuffer = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory() * INPUT_PERCENT);
+    int inputBuffer = (int) totalInputBuffer/k;
+    int tupleCount = (int) Math.floor(inputBuffer/SIZE_OF_RECORD);
+
+    boolean tuplesLeft = true;
+    int bytePos = 0;
+    int pass = 0;
+    int offset = (int) Math.floor(CHUNK_SIZE*SIZE_OF_RECORD) + (pass*tupleCount);
+    ArrayList<String> memContents = new ArrayList<>();
+    while(bytePos < raf.length()) {
+      raf.seek(bytePos);
+
+      for(int i = 0; i < tupleCount; i++) {
+        memContents.add(raf.readLine());
+      }
+      bytePos += offset;
+    }
+    //MappedByteBuffer[] mapBufArray TODO good idea with memory constraint? probably not
   }
 
 }
