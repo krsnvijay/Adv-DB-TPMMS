@@ -1,61 +1,112 @@
-import java.io.*;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.stream.IntStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class TPMMS {
-  // TODO note size_of_record is also used in calculation for 'k' in phase 2
-  private final double SIZE_OF_RECORD = 100.0;
   private static BufferedReader reader;
   private static BufferedWriter writer;
-  private static StringBuilder opString = new StringBuilder();
+
+  private String filePath;
+
+  private final int STARTBYTE = 0;
+  private final int ENDBYTE = System.getProperty("os.name").toLowerCase().contains("win") ? 101 : 100;
 
   private File tempFile = new File("Employee-Generator/temp-file.txt");
   private File finalFile = new File("Employee-Generator/sorted.txt");
 
-  public void sortFile(String filePath) throws IOException {
+  public void runTPMMS(String filepath) {
+    this.filePath = filepath;
+    try {
+      runPhase1();
+      runPhase2();
+    } catch(IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void runPhase1() throws IOException {
+    sortFile(this.filePath);
+  }
+
+  private void runPhase2(){
+    // nothing yet
+  }
+
+  private void performWrite(int recordCounter, char[][] lines) throws IOException {
+    for(int i=0; i<recordCounter; i++) {
+      writer.append(String.copyValueOf(lines[i]));
+    }
+  }
+
+  private boolean shouldSwap(char[] record1, char[] record2) {
+    if(Integer.parseInt(new String(record1,0,8)) <
+            Integer.parseInt(new String(record2, 0, 8))) return true;
+
+    else if(Integer.parseInt(new String(record1,0,8)) ==
+            Integer.parseInt(new String(record2, 0, 8))) {
+      RecordComparator rC = new RecordComparator();
+      return rC.compare(String.valueOf(record1), String.valueOf(record2)) < 0;
+    }
+    return false;
+  }
+
+  private int partition(char[][] arr, int low, int high) {
+    char[] pivot = arr[high];
+    int i = (low - 1);
+    for (int j = low; j <= high - 1; j++) {
+    if (shouldSwap(arr[j],pivot)) {
+        i++;
+        char[] temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+      }
+    }
+    char[] temp = arr[i + 1];
+    arr[i + 1] = arr[high];
+    arr[high] = temp;
+
+    return i + 1;
+  }
+
+  private void recordSort(char[][] records, int low, int high) {
+    if (low < high) {
+      int pivot = partition(records, low, high);
+      recordSort(records, low, pivot - 1);
+      recordSort(records, pivot + 1, high);
+    }
+  }
+
+  private void sortFile(String filePath) throws IOException {
     reader = new BufferedReader(new FileReader(filePath));
     writer = new BufferedWriter(new FileWriter(tempFile));
 
-    File inpFile = new File(filePath);
-    long fileSize = inpFile.length();
-    double numOfRecords = fileSize/SIZE_OF_RECORD;
+    double numOfRecords = 500000.00; // pass as cmd arg
 
-    long totalNumOfPages = (long) Math.floor(MemoryHandler.getInstance().getFreeMemory()/numOfRecords);
-    int numOfTuplesPerPage = (int) Math.floor(numOfRecords/(totalNumOfPages*5f));
+    int totalNumOfPages = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory()/numOfRecords)*
+            MemoryHandler.FIVE_MB;
+    int numOfTuplesPerPage = (int) Math.floor(numOfRecords/(totalNumOfPages));
 
-    //String line = reader.readLine();
-    ArrayList<String> lines = new ArrayList<>();
+    char[][] lines = new char[numOfTuplesPerPage][ENDBYTE];
+    char[] line = new char[ENDBYTE];
 
-    System.out.println(fileSize+" "+numOfRecords+" "+totalNumOfPages+" "+numOfTuplesPerPage);
-    numOfTuplesPerPage = 40;
-    String line = reader.readLine();
-    while (line != null) {
-      lines.add(line);
-      if (lines.size() == numOfTuplesPerPage) {
-        // Block Limit reached
-        // sort the block based on id , date
-        Comparator<String> empIdComparator = Comparator
-            .comparing((String record) -> Integer.parseInt(record.substring(0, 8)));
-        lines.sort(empIdComparator.thenComparing(new RecordComparator()));
+    int recordCounter = 0;
 
-        //write sorted lines to temp file
-        for (String ln : lines) {
-          opString.append(ln).append("\n");
-        }
-
-        // clear the block
-        lines.clear();
-        writer.append(opString);
-        opString.delete(0, opString.length());
+    while (reader.read(line, STARTBYTE, ENDBYTE) != -1) {
+      System.arraycopy(line, 0, lines[recordCounter], 0, ENDBYTE);
+      if (recordCounter == numOfTuplesPerPage-1) {
+        recordSort(lines,0, recordCounter);
+        performWrite(recordCounter,lines);
+        recordCounter = 0;
       }
-//      System.out.println("Free memory: " + MemoryHandler.getInstance().getFreeMemory());
-      line = reader.readLine();
+      recordCounter++;
     }
     reader.close();
     writer.close();
+    System.out.printf("Blocks -- %d | Tuples/block -- %d \n",totalNumOfPages,numOfTuplesPerPage);
+    
     System.out.println("Sorted lines block wise, now merging");
     mergeKWay(tempFile, 40, 0.6f);
   }
