@@ -31,9 +31,9 @@ public class TPMMS {
 
     System.out.println(fileSize+" "+numOfRecords+" "+totalNumOfPages+" "+numOfTuplesPerPage);
     numOfTuplesPerPage = 40;
-    while (reader.readLine() != null) {
-      lines.add(reader.readLine());
-
+    String line = reader.readLine();
+    while (line != null) {
+      lines.add(line);
       if (lines.size() == numOfTuplesPerPage) {
         // Block Limit reached
         // sort the block based on id , date
@@ -52,7 +52,7 @@ public class TPMMS {
         opString.delete(0, opString.length());
       }
 //      System.out.println("Free memory: " + MemoryHandler.getInstance().getFreeMemory());
-      //line = reader.readLine();
+      line = reader.readLine();
     }
     reader.close();
     writer.close();
@@ -82,7 +82,6 @@ public class TPMMS {
     int bytePos = 0;
     int pass = 0;
     int offset = (int) Math.floor(CHUNK_SIZE*SIZE_OF_RECORD) + (pass*tupleCount);
-
     ArrayList<String> memContents = new ArrayList<>();
     while(bytePos < raf.length()) {
       raf.seek(bytePos);
@@ -92,7 +91,6 @@ public class TPMMS {
       }
       bytePos += offset;
     }
-    System.out.println(memContents);
     //MappedByteBuffer[] mapBufArray TODO good idea with memory constraint? probably not
   }
 
