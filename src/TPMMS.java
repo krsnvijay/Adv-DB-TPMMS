@@ -11,6 +11,9 @@ public class TPMMS {
 
   private String filePath;
 
+  private final int startByte = 0;
+  private final int endByte = System.getProperty("os.name").toLowerCase().contains("win") ? 101 : 100;
+
   private File tempFile = new File("Employee-Generator/temp-file.txt");
 
   public void runTPMMS(String filepath) {
@@ -89,8 +92,6 @@ public class TPMMS {
     char[] line = new char[100];
 
     int recordCounter = 0;
-    final int startByte = 0;
-    final int endByte = 100;
 
     while (reader.read(line, startByte, endByte) != -1) {
       System.arraycopy(line, 0, lines[recordCounter], 0, 100);
