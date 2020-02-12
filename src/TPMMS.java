@@ -1,5 +1,4 @@
 import java.io.*;
-import java.util.ArrayList;
 
 public class TPMMS {
   private static BufferedReader reader;
@@ -12,6 +11,11 @@ public class TPMMS {
 
   private File tempFile = new File("Employee-Generator/temp-file.txt");
   private File finalFile = new File("Employee-Generator/sorted.txt");
+  
+  private int numOfTuplesPerPage;
+  private int totalNumOfPages;
+  private int numOfInputBuffers;
+  private int numOfTuplesInLastBlock;
 
   public void runTPMMS(String filepath) {
     this.filePath = filepath;
@@ -32,6 +36,9 @@ public class TPMMS {
   }
 
   private void performWrite(int recordCounter, char[][] lines) throws IOException {
+    if(recordCounter == 0) {
+      writer.append(String.copyValueOf(lines[0]));
+    }
     for(int i=0; i<recordCounter; i++) {
       writer.append(String.copyValueOf(lines[i]));
     }
@@ -68,6 +75,7 @@ public class TPMMS {
   }
 
   private void recordSort(char[][] records, int low, int high) {
+    if(records.length == 1) return;
     if (low < high) {
       int pivot = partition(records, low, high);
       recordSort(records, low, pivot - 1);
@@ -79,35 +87,43 @@ public class TPMMS {
     reader = new BufferedReader(new FileReader(filePath));
     writer = new BufferedWriter(new FileWriter(tempFile));
 
-    double numOfRecords = 500000.00; // pass as cmd arg
+    int numOfRecords = 50000; // pass as cmd arg
 
-    int totalNumOfPages = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory()/numOfRecords)*
+    totalNumOfPages = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory()/(double)numOfRecords)*
             MemoryHandler.FIVE_MB;
-    int numOfTuplesPerPage = (int) Math.floor(numOfRecords/(totalNumOfPages));
+    if(totalNumOfPages > numOfRecords) totalNumOfPages = numOfRecords;
+    numOfTuplesPerPage = (int) Math.floor(numOfRecords/(double)(totalNumOfPages));
+    numOfTuplesInLastBlock = numOfRecords%(totalNumOfPages*numOfTuplesPerPage);
 
     char[][] lines = new char[numOfTuplesPerPage][ENDBYTE];
     char[] line = new char[ENDBYTE];
 
     int recordCounter = 0;
+    short pageCounter = 1;
 
     while (reader.read(line, STARTBYTE, ENDBYTE) != -1) {
       System.arraycopy(line, 0, lines[recordCounter], 0, ENDBYTE);
-      if (recordCounter == numOfTuplesPerPage-1) {
+      if ((pageCounter > totalNumOfPages && recordCounter == numOfTuplesInLastBlock - 1) ||
+              (recordCounter == numOfTuplesPerPage-1)) {
         recordSort(lines,0, recordCounter);
         performWrite(recordCounter,lines);
         recordCounter = 0;
+        pageCounter++;
+        continue;
       }
       recordCounter++;
     }
     reader.close();
     writer.close();
     System.out.printf("Blocks -- %d | Tuples/block -- %d \n",totalNumOfPages,numOfTuplesPerPage);
-    
+
+    if(numOfTuplesInLastBlock > 0) totalNumOfPages += 1;
+
     System.out.println("Sorted lines block wise, now merging");
-    mergeKWay(tempFile, 40, 0.6f);
+    // mergeKWay(tempFile);
   }
 
-  public void mergeKWay(File tempFilePath, int CHUNK_SIZE, float INPUT_PERCENT) throws IOException {
+  public void mergeKWay(File tempFilePath) throws IOException {
 
     RandomAccessFile raf = new RandomAccessFile(tempFilePath, "r");
     writer = new BufferedWriter(new FileWriter(finalFile));
@@ -120,25 +136,25 @@ public class TPMMS {
     // Output buffer fills after 8 passes (450000 bytes per pass), then 1 disk IO occurs
     // For entire list (5 mil bytes for 500K) we have 11 disk IOs
 
-    int k = (int) Math.floor((raf.length()/ENDBYTE)/CHUNK_SIZE);
-    long totalInputBuffer = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory() * INPUT_PERCENT);
-    int inputBuffer = (int) totalInputBuffer/k;
-    int tupleCount = (int) Math.floor(inputBuffer/ENDBYTE);
+    numOfInputBuffers = totalNumOfPages - 1;
+    int numOfTuplesPerInputBuffer = 1;
+    // int tupleCount = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory()/ENDBYTE);
 
-    boolean tuplesLeft = true;
-    int bytePos = 0;
-    int pass = 0;
-    int offset = (int) Math.floor(CHUNK_SIZE*ENDBYTE) + (pass*tupleCount);
-    ArrayList<String> memContents = new ArrayList<>();
-    while(bytePos < raf.length()) {
-      raf.seek(bytePos);
+    int[] runsPerPagePointers = new int[numOfInputBuffers];
 
-      for(int i = 0; i < tupleCount; i++) {
-        memContents.add(raf.readLine());
+    while(!exhaustedBlocks(runsPerPagePointers,500000)) {
+      for (int i = 0; i < numOfInputBuffers; i++) {
+
       }
-      bytePos += offset;
     }
-    //MappedByteBuffer[] mapBufArray TODO good idea with memory constraint? probably not
+  }
+
+  private boolean exhaustedBlocks(int[] runsPerPagePointers, int maxTuples) {
+    int sum = 0;
+    for(int pointer:runsPerPagePointers){
+      sum += pointer;
+    }
+    return sum == maxTuples;
   }
 
 }
