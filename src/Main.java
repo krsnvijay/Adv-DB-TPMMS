@@ -1,4 +1,6 @@
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 
 public class Main {
 
@@ -10,17 +12,11 @@ public class Main {
             System.exit(-1);
         }
 
+        Instant s = Instant.now();
         TPMMS tpmms = new TPMMS();
         tpmms.sortFile(args[0]);
-        var run = Runtime.getRuntime();
-        var free = run.freeMemory();
-        var total = run.totalMemory();
-        var max = run.maxMemory();
-        var used = total - free;
-        System.out.println("Memory: used " + megabyteString(used) + "M"
-            + " free " + megabyteString(free) + "M"
-            + " total " + megabyteString(total) + "M"
-            + " max " + megabyteString(max) + "M");
+        Instant e = Instant.now();
+        System.out.println(Duration.between(s, e).toMillis());
     }
     private static String megabyteString(long bytes) {
         return String.format("%.1f", ((float)bytes) / 1024 / 1024);

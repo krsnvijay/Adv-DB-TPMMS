@@ -11,11 +11,11 @@ public class TPMMS {
 
 
   public void sortFile(String filePath) throws IOException {
-    var tempFile = new File("Employee-Generator/temp-file.txt");
-    var bufferedReader = new BufferedReader(new FileReader(filePath));
-    var bufferedWriter = new BufferedWriter(new FileWriter(tempFile));
-    var line = bufferedReader.readLine();
-    var lines = new ArrayList<String>();
+    File tempFile = new File("Employee-Generator/temp-file.txt");
+    BufferedReader bufferedReader = new BufferedReader(new FileReader(filePath));
+    BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(tempFile));
+    String line = bufferedReader.readLine();
+    ArrayList<String> lines = new ArrayList<String>();
     while (line != null) {
       lines.add(line);
       if (lines.size() == 40) {
