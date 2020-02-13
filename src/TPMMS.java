@@ -6,6 +6,8 @@ public class TPMMS {
 
   private String filePath;
 
+  private final int numOfRecords = 500000;
+
   private final int STARTBYTE = 0;
   private final int ENDBYTE = System.getProperty("os.name").toLowerCase().contains("win") ? 101 : 100;
 
@@ -31,8 +33,8 @@ public class TPMMS {
     sortFile(this.filePath);
   }
 
-  private void runPhase2(){
-    // nothing yet
+  private void runPhase2() throws IOException {
+    mergeKWay(tempFile);
   }
 
   private void performWrite(int recordCounter, char[][] lines) throws IOException {
@@ -75,7 +77,6 @@ public class TPMMS {
   }
 
   private void recordSort(char[][] records, int low, int high) {
-    if(records.length == 1) return;
     if (low < high) {
       int pivot = partition(records, low, high);
       recordSort(records, low, pivot - 1);
@@ -83,44 +84,49 @@ public class TPMMS {
     }
   }
 
+  private void handlePageCalculations() {
+    long freeMemoryEstimationPhase1 = (long) Math.ceil(MemoryHandler.getInstance().getFreeMemory());
+
+    totalNumOfPages = (int) Math.ceil((numOfRecords * ENDBYTE) / (double) freeMemoryEstimationPhase1);
+    numOfTuplesPerPage = (numOfRecords)/totalNumOfPages;
+
+    // safeguard
+    if(numOfTuplesPerPage > 12500) {
+      numOfTuplesPerPage = 5000;
+      totalNumOfPages = numOfRecords/numOfTuplesPerPage;
+    }
+  }
+
   private void sortFile(String filePath) throws IOException {
     reader = new BufferedReader(new FileReader(filePath));
     writer = new BufferedWriter(new FileWriter(tempFile));
 
-    int numOfRecords = 50000; // pass as cmd arg
-
-    totalNumOfPages = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory()/(double)numOfRecords)*
-            MemoryHandler.FIVE_MB;
-    if(totalNumOfPages > numOfRecords) totalNumOfPages = numOfRecords;
-    numOfTuplesPerPage = (int) Math.floor(numOfRecords/(double)(totalNumOfPages));
-    numOfTuplesInLastBlock = numOfRecords%(totalNumOfPages*numOfTuplesPerPage);
+    handlePageCalculations();
 
     char[][] lines = new char[numOfTuplesPerPage][ENDBYTE];
     char[] line = new char[ENDBYTE];
-
     int recordCounter = 0;
-    short pageCounter = 1;
 
     while (reader.read(line, STARTBYTE, ENDBYTE) != -1) {
       System.arraycopy(line, 0, lines[recordCounter], 0, ENDBYTE);
-      if ((pageCounter > totalNumOfPages && recordCounter == numOfTuplesInLastBlock - 1) ||
-              (recordCounter == numOfTuplesPerPage-1)) {
-        recordSort(lines,0, recordCounter);
+      recordCounter++;
+      if (recordCounter == numOfTuplesPerPage) {
+        recordSort(lines,0, recordCounter-1);
         performWrite(recordCounter,lines);
         recordCounter = 0;
-        pageCounter++;
-        continue;
       }
-      recordCounter++;
     }
+
+    numOfTuplesInLastBlock = recordCounter;
+
+    if(recordCounter > 0) {
+      recordSort(lines,0, recordCounter-1);
+      performWrite(recordCounter,lines);
+    }
+
     reader.close();
     writer.close();
     System.out.printf("Blocks -- %d | Tuples/block -- %d \n",totalNumOfPages,numOfTuplesPerPage);
-
-    if(numOfTuplesInLastBlock > 0) totalNumOfPages += 1;
-
-    System.out.println("Sorted lines block wise, now merging");
-    // mergeKWay(tempFile);
   }
 
   public void mergeKWay(File tempFilePath) throws IOException {
