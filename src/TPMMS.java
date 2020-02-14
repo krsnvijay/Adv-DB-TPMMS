@@ -1,4 +1,5 @@
 import java.io.*;
+import java.util.Arrays;
 
 public class TPMMS {
   private static BufferedReader reader;
@@ -16,7 +17,6 @@ public class TPMMS {
   
   private int numOfTuplesPerPage;
   private int totalNumOfPages;
-  private int numOfInputBuffers;
   private int numOfTuplesInLastBlock;
 
   public void runTPMMS(String filepath) {
@@ -134,25 +134,79 @@ public class TPMMS {
     RandomAccessFile raf = new RandomAccessFile(tempFilePath, "r");
     writer = new BufferedWriter(new FileWriter(finalFile));
 
-    // TODO dynamically choose appropriate buffer size
-    // For 500K record file with 5MB heap max:
-    // 60% of 5*1024*1024 bytes (~3.1mil bytes) with 12500 lists = input buffer divided into chunks of 251 bytes each
-    // ~251 bytes per sorted list in input = 2 tuples from each list to be merged to output space (40%)
-    // [this seems wrong, I've forgotten how I got this]
-    // Output buffer fills after 8 passes (450000 bytes per pass), then 1 disk IO occurs
-    // For entire list (5 mil bytes for 500K) we have 11 disk IOs
+    long freeMem = MemoryHandler.getInstance().getFreeMemory();
+    int numOfInputBuffers = (int) Math.floor(freeMem/(numOfTuplesPerPage*ENDBYTE)) - 1;
+    int fileSize = numOfRecords*ENDBYTE;
+    int totalPasses = (int) Math.ceil(Math.log(fileSize/freeMem) / Math.log(numOfInputBuffers));
+    int chunkSize = numOfTuplesPerPage;
+    short outIndex = 0;
 
-    numOfInputBuffers = totalNumOfPages - 1;
-    int numOfTuplesPerInputBuffer = 1;
-    // int tupleCount = (int) Math.floor(MemoryHandler.getInstance().getFreeMemory()/ENDBYTE);
+    for(int pass=0; pass<totalPasses; pass++) {
+      byte[][] outputBuffer = new byte[numOfTuplesPerPage][ENDBYTE];
+      int[] runPointers = new int[numOfInputBuffers];
+      byte[][][] buffer = new byte[numOfInputBuffers][numOfTuplesPerPage][ENDBYTE];
 
-    int[] runsPerPagePointers = new int[numOfInputBuffers];
-
-    while(!exhaustedBlocks(runsPerPagePointers,500000)) {
       for (int i = 0; i < numOfInputBuffers; i++) {
+        int start = i*numOfTuplesPerPage*ENDBYTE;
+        int offset = runPointers[i]*ENDBYTE;
+        int seekVal = start + offset;
+        raf.seek(seekVal);
+        for(int j=0;j<numOfTuplesPerPage;j++) {
+          raf.readFully(buffer[i][j]);
+        }
+      }
+      while(!exhaustedBlocks(runPointers,chunkSize)) {
+        int idxBlock = indexOfBlockWithMinTuple(buffer,runPointers);
+        byte[] minTupleBuffer = buffer[idxBlock][runPointers[idxBlock]];
+        runPointers[idxBlock] += 1;
+        outputBuffer[outIndex] = minTupleBuffer;
+        outIndex++;
 
+        if(outIndex == numOfTuplesPerPage - 1) {
+          for(int i=0; i<outputBuffer.length; i++) {
+            writer.append(new String(outputBuffer[i]));
+          }
+          outIndex = 0;
+        }
+      }
+
+      chunkSize *= numOfInputBuffers;
+
+      if(outIndex > 0) {
+        for(int i=0; i<outIndex; i++) {
+          writer.append(new String(outputBuffer[i]));
+        }
       }
     }
+  }
+
+  private int indexOfBlockWithMinTuple(byte[][][] buffer, int[] runPointers) {
+    byte [][] minTuplesOfAllBlocks = new byte[buffer.length][ENDBYTE];
+    int minIndex = 0;
+    int lastWorkingIdx = 0 ;
+    boolean setInitialLWI = false;
+    for (int i = 0; i < buffer.length; i++) {
+      if (runPointers[i] >= numOfTuplesPerPage) {
+        continue;
+      }
+      if (!setInitialLWI) {
+        lastWorkingIdx = i;
+        setInitialLWI = true;
+        continue;
+      }
+      minTuplesOfAllBlocks[i] = buffer[i][runPointers[i]];
+      int empID1 = Integer.parseInt(new String(minTuplesOfAllBlocks[lastWorkingIdx], 0, 8));
+      int empID2 = Integer.parseInt(new String(minTuplesOfAllBlocks[i], 0, 8));
+      if(empID1 > empID2) {
+        minIndex = i;
+      }
+      else if(empID1 == empID2) {
+        RecordComparator rC = new RecordComparator();
+        boolean res = rC.compare(new String(minTuplesOfAllBlocks[i - 1]), new String(minTuplesOfAllBlocks[i])) < 0;
+        minIndex = res? i: i-1; // this is probably correct
+      }
+    }
+    return minIndex;
   }
 
   private boolean exhaustedBlocks(int[] runsPerPagePointers, int maxTuples) {

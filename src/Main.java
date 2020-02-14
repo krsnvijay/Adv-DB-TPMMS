@@ -6,6 +6,15 @@ import java.util.Scanner;
 public class Main {
 
     public static void main(String[] args) {
+
+//        long freeMem = 3;
+//        int numOfTuplesPerPage = 1;
+//        int ENDBYTE = 1;
+//        int numOfRecords = 12;
+//        int numOfInputBuffers = (int) Math.floor(freeMem/(numOfTuplesPerPage*ENDBYTE)) - 1;
+//        int fileSize = numOfRecords*ENDBYTE;
+//        int totalPasses = (int) Math.ceil(Math.log(fileSize/freeMem) / Math.log(numOfInputBuffers));
+
         if(args.length != 2){
             System.out.println("Pass Two Text files as arguments to perform TPMMS");
             System.out.println("usage: Main <path to t1> <path to t2>");
