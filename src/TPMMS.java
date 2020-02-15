@@ -140,12 +140,21 @@ public class TPMMS {
     int totalPasses = (int) Math.ceil(Math.log(fileSize/freeMem) / Math.log(numOfInputBuffers));
     int chunkSize = numOfTuplesPerPage;
     short outIndex = 0;
-
+    /*
+      EXPLANATION for the loop below --
+      given numOfTuplesPerPage = 5000
+      numOfInputBuffers = 4
+      1st Pass = 5000
+      2nd Pass = 20000
+      3rd Pass = 80000
+      ....
+     */
     for(int pass=0; pass<totalPasses; pass++) {
       byte[][] outputBuffer = new byte[numOfTuplesPerPage][ENDBYTE];
       int[] runPointers = new int[numOfInputBuffers];
       byte[][][] buffer = new byte[numOfInputBuffers][numOfTuplesPerPage][ENDBYTE];
 
+      // initial read alone
       for (int i = 0; i < numOfInputBuffers; i++) {
         int start = i*numOfTuplesPerPage*ENDBYTE;
         int offset = runPointers[i]*ENDBYTE;
@@ -155,8 +164,9 @@ public class TPMMS {
           raf.readFully(buffer[i][j]);
         }
       }
-      while(!exhaustedBlocks(runPointers,chunkSize)) {
-        int idxBlock = indexOfBlockWithMinTuple(buffer,runPointers);
+      // block-wise merging
+      while(!exhaustedBlocks(buffer,runPointers,chunkSize,numOfInputBuffers)) {
+        int idxBlock = indexOfBlockWithMinTuple(buffer,runPointers, 0, -1);
         byte[] minTupleBuffer = buffer[idxBlock][runPointers[idxBlock]];
         runPointers[idxBlock] += 1;
         outputBuffer[outIndex] = minTupleBuffer;
@@ -169,52 +179,70 @@ public class TPMMS {
           outIndex = 0;
         }
       }
-
-      chunkSize *= numOfInputBuffers;
-
+      // TO FIX - OP buffer seems to have corrupt last index values
       if(outIndex > 0) {
         for(int i=0; i<outIndex; i++) {
           writer.append(new String(outputBuffer[i]));
         }
       }
+      // update disk chunk-size
+      chunkSize *= numOfInputBuffers;
     }
   }
 
-  private int indexOfBlockWithMinTuple(byte[][][] buffer, int[] runPointers) {
-    byte [][] minTuplesOfAllBlocks = new byte[buffer.length][ENDBYTE];
-    int minIndex = 0;
-    int lastWorkingIdx = 0 ;
-    boolean setInitialLWI = false;
-    for (int i = 0; i < buffer.length; i++) {
-      if (runPointers[i] >= numOfTuplesPerPage) {
-        continue;
-      }
-      if (!setInitialLWI) {
-        lastWorkingIdx = i;
-        setInitialLWI = true;
-        continue;
-      }
-      minTuplesOfAllBlocks[i] = buffer[i][runPointers[i]];
-      int empID1 = Integer.parseInt(new String(minTuplesOfAllBlocks[lastWorkingIdx], 0, 8));
-      int empID2 = Integer.parseInt(new String(minTuplesOfAllBlocks[i], 0, 8));
-      if(empID1 > empID2) {
-        minIndex = i;
-      }
-      else if(empID1 == empID2) {
-        RecordComparator rC = new RecordComparator();
-        boolean res = rC.compare(new String(minTuplesOfAllBlocks[i - 1]), new String(minTuplesOfAllBlocks[i])) < 0;
-        minIndex = res? i: i-1; // this is probably correct
-      }
+  private int indexOfBlockWithMinTuple(byte[][][] buffer, int[] runPointers, int currIndex, int minIndex) {
+    if(currIndex == buffer.length) {
+      return minIndex;
     }
-    return minIndex;
+    if(runPointers[currIndex] >= numOfTuplesPerPage) {
+      return indexOfBlockWithMinTuple(buffer, runPointers, currIndex+1,  minIndex);
+    }
+    if(minIndex == -1) {
+      return indexOfBlockWithMinTuple(buffer, runPointers, currIndex+1, currIndex);
+    }
+
+    int empID1 = Integer.parseInt(new String(buffer[minIndex][runPointers[minIndex]], 0, 8));
+    int empID2 = Integer.parseInt(new String(buffer[currIndex][runPointers[currIndex]], 0, 8));
+    if(empID1 > empID2) {
+      minIndex = currIndex;
+    }
+    else if(empID1 == empID2) {
+      RecordComparator rC = new RecordComparator();
+      boolean res = rC.compare(new String(buffer[minIndex][runPointers[minIndex]]),
+              new String(buffer[currIndex][runPointers[currIndex]])) < 0;
+      minIndex = res? currIndex: minIndex;
+    }
+
+    return indexOfBlockWithMinTuple(buffer, runPointers, currIndex+1, minIndex);
   }
 
-  private boolean exhaustedBlocks(int[] runsPerPagePointers, int maxTuples) {
-    int sum = 0;
+  private boolean exhaustedBlocks(byte[][][] buffer, int[] runsPerPagePointers, int maxTuples, int numOfInputBuffers) {
+    int sum = 0, counter = 0;
     for(int pointer:runsPerPagePointers){
       sum += pointer;
     }
-    return sum == maxTuples;
+    if(sum == maxTuples*numOfInputBuffers) return true;
+    for(int pointer:runsPerPagePointers) {
+      if (pointer == numOfTuplesPerPage && maxTuples > pointer) {
+        readNextChunkInBuffer(buffer, pointer, counter, maxTuples);
+        runsPerPagePointers[counter] = 0;
+      }
+      counter++;
+    }
+    return false;
+  }
+
+  private void readNextChunkInBuffer(byte[][][] buffer, int currRunPointer, int counter, int chunkSize) {
+    try {
+      RandomAccessFile raf = new RandomAccessFile(finalFile, "r");
+      int start = (counter * numOfTuplesPerPage + currRunPointer) * ENDBYTE; // verify this calculation
+      raf.seek(start);
+      for (int j = 0; j < numOfTuplesPerPage; j++)
+        raf.readFully(buffer[counter][j]);
+    }
+    catch(Exception e) {
+      e.printStackTrace();
+    }
   }
 
 }
