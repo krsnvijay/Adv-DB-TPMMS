@@ -7,7 +7,7 @@ public class TPMMS {
 
   private String filePath;
 
-  private final int numOfRecords = 500000;
+  private final int numOfRecords = 499771;
 
   private final int STARTBYTE = 0;
   private final int ENDBYTE = System.getProperty("os.name").toLowerCase().contains("win") ? 101 : 100;
@@ -21,6 +21,7 @@ public class TPMMS {
   private int totalNumOfPages;
   private int numOfTuplesInLastBlock;
   private int currentChunkPos;
+  private boolean lastBlock = false;
 
   public void runTPMMS(String filepath) {
     this.filePath = filepath;
@@ -187,7 +188,7 @@ public class TPMMS {
         }
 
         // block-wise merging
-        while (!exhaustedBlocks(buffer, runPointers, chunkSize, numOfInputBuffers)) {
+        while (!exhaustedBlocks(buffer, runPointers, chunkSize, numOfInputBuffers) && !lastBlock) {
 
           int idxBlock = indexOfBlockWithMinTuple(buffer, runPointers, 0, -1);
           byte[] minTupleBuffer = buffer[idxBlock][runPointers[idxBlock]];
@@ -219,6 +220,10 @@ public class TPMMS {
 //        }
 //      }
 
+      if(lastBlock) {
+        handleLastBlock();
+      }
+
       if (outIndex > 0) {
         for (int i = 0; i < outIndex; i++) {
           writer2.write(outputBuffer[i]);
@@ -230,6 +235,11 @@ public class TPMMS {
     }
 
     writer2.close();
+  }
+
+  private void handleLastBlock() {
+    // if only first buffer, flush
+    // if partial buffer filled, sort
   }
 
   private int indexOfBlockWithMinTuple(byte[][][] buffer, int[] runPointers, int currIndex, int minIndex) {
@@ -264,6 +274,7 @@ public class TPMMS {
     for (int pointer : runsPerPagePointers) {
       sum += pointer;
     }
+
     if (sum == maxTuples * numOfInputBuffers) {
       currentChunkPos++;
       boolean result = readNextBlocksInFile(filePath, buffer, numOfTuplesPerPage, numOfInputBuffers, runsPerPagePointers,maxTuples);
@@ -304,6 +315,7 @@ public class TPMMS {
             raf.readFully(tempBuffer[j]);
           }
           buffer[i] = tempBuffer;
+          lastBlock = true;
           return true;
         }
         for (int j = 0; j < numOfTuplesPerPage; j++)
