@@ -3,6 +3,7 @@ import java.io.*;
 public class TPMMS {
   private static BufferedReader reader;
   private static BufferedWriter writer;
+  private static FileOutputStream writer2;
 
   private String filePath;
 
@@ -101,7 +102,6 @@ public class TPMMS {
   private void sortFile(String filePath) throws IOException {
     reader = new BufferedReader(new FileReader(filePath));
     writer = new BufferedWriter(new FileWriter(tempFile + "_0.txt"));
-
     handlePageCalculations();
 
     char[][] lines = new char[numOfTuplesPerPage][ENDBYTE];
@@ -137,6 +137,8 @@ public class TPMMS {
     return (int) Math.ceil(totalNumOfPages/Math.pow(numOfInputBuffers, currentPass));
   }
 
+
+
   public void mergeKWay(File tempFilePath) throws IOException {
 
     RandomAccessFile raf;
@@ -159,25 +161,30 @@ public class TPMMS {
     for (int pass = 0; pass < totalPasses; pass++) {
       this.currentPass = pass;
       raf = new RandomAccessFile(tempFile + "_" + (pass) + ".txt", "r");
-      writer = new BufferedWriter(new FileWriter(finalFile + "_" + (pass + 1) + ".txt"));
+      writer2 = new FileOutputStream(finalFile + "_" + (pass + 1) + ".txt");
+//      writer = new BufferedWriter(new FileWriter(finalFile + "_" + (pass + 1) + ".txt"));
       byte[][] outputBuffer = new byte[numOfTuplesPerPage][ENDBYTE];
       int[] runPointers = new int[numOfInputBuffers];
       byte[][][] buffer = new byte[numOfInputBuffers][numOfTuplesPerPage][ENDBYTE];
 
       // initial read alone
-//      try {
-      for (int i = 0; i < numOfInputBuffers; i++) {
+        for (int i = 0; i < numOfInputBuffers; i++) {
           int seekVal = i * chunkSize * ENDBYTE;
           raf.seek(seekVal);
-          if((seekVal + numOfTuplesPerPage*ENDBYTE) > fileSize) {
-            int tempSize = (fileSize - seekVal)/ENDBYTE;
-            //byte[][][]
-            //raf.readFully();
+          if ((seekVal + numOfTuplesPerPage * ENDBYTE) > fileSize) {
+            int tempSize = (fileSize - seekVal) / ENDBYTE;
+            byte[][] tempBuffer = new byte[tempSize][ENDBYTE];
+            for (int j = 0; j < tempSize; j++) {
+              raf.readFully(tempBuffer[j]);
+            }
+            buffer[i] = tempBuffer;
+            break;
           }
           for (int j = 0; j < numOfTuplesPerPage; j++) {
             raf.readFully(buffer[i][j]);
           }
         }
+
         // block-wise merging
         while (!exhaustedBlocks(buffer, runPointers, chunkSize, numOfInputBuffers)) {
           int idxBlock = indexOfBlockWithMinTuple(buffer, runPointers, 0, -1);
@@ -188,7 +195,7 @@ public class TPMMS {
 
           if (outIndex == numOfTuplesPerPage) {
             for (int i = 0; i < outputBuffer.length; i++) {
-              writer.append(new String(outputBuffer[i]));
+              writer2.write(outputBuffer[i]);
             }
             outIndex = 0;
           }
@@ -211,7 +218,7 @@ public class TPMMS {
 
       if (outIndex > 0) {
         for (int i = 0; i < outIndex; i++) {
-          writer.append(new String(outputBuffer[i]));
+          writer2.write(outputBuffer[i]);
         }
       }
       // update disk chunk-size
@@ -219,7 +226,7 @@ public class TPMMS {
       raf.close();
     }
 
-    writer.close();
+    writer2.close();
   }
 
   private int indexOfBlockWithMinTuple(byte[][][] buffer, int[] runPointers, int currIndex, int minIndex) {
