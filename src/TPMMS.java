@@ -23,7 +23,7 @@ public class TPMMS {
   public void runTPMMS(String filepath) {
     this.filePath = filepath;
     try {
-      runPhase1();
+//      runPhase1();
       runPhase2();
     } catch (IOException e) {
       e.printStackTrace();
@@ -143,7 +143,11 @@ public class TPMMS {
 
     long freeMem = MemoryHandler.getInstance().getFreeMemory();
     int numOfInputBuffers = (int) Math.floor(freeMem / (numOfTuplesPerPage * ENDBYTE)) - 1;
-    int fileSize = numOfRecords * ENDBYTE;
+    numOfInputBuffers = 2; //TODO del
+    numOfTuplesPerPage = 3;
+
+//    int fileSize = numOfRecords * ENDBYTE;
+    int fileSize = 15 * ENDBYTE; //TODO del
     int totalPasses = (int) Math.ceil(Math.log(fileSize / freeMem) / Math.log(numOfInputBuffers));
     int chunkSize = numOfTuplesPerPage;
     short outIndex = 0;
@@ -165,19 +169,27 @@ public class TPMMS {
       byte[][][] buffer = new byte[numOfInputBuffers][numOfTuplesPerPage][ENDBYTE];
 
       // initial read alone
-//      try {
-      for (int i = 0; i < numOfInputBuffers; i++) {
+      try {
+        for (int i = 0; i < numOfInputBuffers; i++) {
           int seekVal = i * chunkSize * ENDBYTE;
           raf.seek(seekVal);
-          if((seekVal + numOfTuplesPerPage*ENDBYTE) > fileSize) {
-            int tempSize = (fileSize - seekVal)/ENDBYTE;
-            //byte[][][]
-            //raf.readFully();
+          if ((seekVal + numOfTuplesPerPage * ENDBYTE) > fileSize) {
+            int tempSize = (fileSize - seekVal) / ENDBYTE;
+            byte[][] tempBuffer = new byte[tempSize][ENDBYTE];
+            for (int j = 0; j < tempSize; j++) {
+              raf.readFully(tempBuffer[j]);
+            }
+            buffer[i] = tempBuffer;
+            break;
           }
           for (int j = 0; j < numOfTuplesPerPage; j++) {
             raf.readFully(buffer[i][j]);
           }
         }
+      }
+      catch(Exception e) {
+        System.out.println("ah shiz");
+      }
         // block-wise merging
         while (!exhaustedBlocks(buffer, runPointers, chunkSize, numOfInputBuffers)) {
           int idxBlock = indexOfBlockWithMinTuple(buffer, runPointers, 0, -1);
@@ -269,8 +281,6 @@ public class TPMMS {
         readNextChunkInBuffer(buffer, pointer, i, maxTuples);
       }
     }
-
-
 
     return false;
   }
