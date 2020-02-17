@@ -1,4 +1,5 @@
 import java.io.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -150,10 +151,12 @@ public class TPMMS {
 
     long freeMem = MemoryHandler.getInstance().getFreeMemory();
     int numOfInputBuffers = (int) Math.floor(freeMem / (numOfTuplesPerPage * ENDBYTE)) - 1;
+    System.out.println("NUMBER OF INPUT BUFFERS IS " + numOfInputBuffers);
     int fileSize = numOfRecords * ENDBYTE;
     int totalPasses = (int) Math.ceil(Math.log(fileSize / freeMem) / Math.log(numOfInputBuffers));
+    System.out.println("RUNNING FOR " + totalPasses + " PASSES");
     int chunkSize = numOfTuplesPerPage;
-    short outIndex = 0;
+    int outIndex = 0;
     /*
       EXPLANATION for the loop below --
       given numOfTuplesPerPage = 5000
@@ -196,9 +199,11 @@ public class TPMMS {
         while (!exhaustedBlocks(buffer, runPointers, chunkSize, numOfInputBuffers) && !lastBlock) {
 
           int idxBlock = indexOfBlockWithMinTuple(buffer, runPointers, 0, -1, chunkSize);
-          byte[] minTupleBuffer = buffer[idxBlock][runPointers[idxBlock]%numOfTuplesPerPage];
+          byte[] minTupleBuffer = Arrays.copyOf(buffer[idxBlock][runPointers[idxBlock]%numOfTuplesPerPage],ENDBYTE);
           runPointers[idxBlock] += 1;
+          
           outputBuffer[outIndex] = minTupleBuffer;
+
           outIndex++;
 
           if (outIndex == numOfTuplesPerPage) {
@@ -237,9 +242,10 @@ public class TPMMS {
       // update disk chunk-size
       chunkSize *= numOfInputBuffers;
       raf.close();
+      writer2.close();
+
     }
 
-    writer2.close();
   }
 
   private void handleLastBlock() {
