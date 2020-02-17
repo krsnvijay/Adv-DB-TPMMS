@@ -1,11 +1,12 @@
 import java.io.IOException;
+import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Scanner;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, ParseException {
 
 //        long freeMem = 3;
 //        int numOfTuplesPerPage = 1;
@@ -21,8 +22,10 @@ public class Main {
             System.exit(-1);
         }
         Instant start = Instant.now();
-        TPMMS tpmms = new TPMMS();
-        tpmms.runTPMMS(args[0]);
+        Sorter sorter = new Sorter();
+        sorter.sort(args[0],40);
+//        TPMMS tpmms = new TPMMS();
+//        tpmms.runTPMMS(args[0]);
         Instant end = Instant.now();
         System.out.println("Exec time: " + Duration.between(start, end).toMillis() + "ms");
         Runtime run = Runtime.getRuntime();
