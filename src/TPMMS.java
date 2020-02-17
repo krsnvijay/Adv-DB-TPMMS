@@ -166,7 +166,7 @@ public class TPMMS {
       3rd Pass = 80000
       ....
      */
-    for (int pass = 0; pass < totalPasses; pass++) {
+    for (int pass = 0; pass <= totalPasses; pass++) {
       this.currentPass = pass;
       lastBlock = false;
       currentChunkPos = 0;
@@ -201,7 +201,7 @@ public class TPMMS {
           int idxBlock = indexOfBlockWithMinTuple(buffer, runPointers, 0, -1, chunkSize);
           byte[] minTupleBuffer = Arrays.copyOf(buffer[idxBlock][runPointers[idxBlock]%numOfTuplesPerPage],ENDBYTE);
           runPointers[idxBlock] += 1;
-          
+
           outputBuffer[outIndex] = minTupleBuffer;
 
           outIndex++;
@@ -231,7 +231,7 @@ public class TPMMS {
 //      }
 
       if(lastBlock) {
-        handleLastBlock();
+        handleLastBlock(runPointers);
       }
 
 //      if (outIndex > 0) {
@@ -248,9 +248,12 @@ public class TPMMS {
 
   }
 
-  private void handleLastBlock() {
+  private void handleLastBlock(int[] runPointers) {
     // if only first buffer, flush
+
+
     // if partial buffer filled, sort
+
   }
 
   private int indexOfBlockWithMinTuple(byte[][][] buffer, int[] runPointers, int currIndex, int minIndex, int chunkSize) {
@@ -330,8 +333,11 @@ public class TPMMS {
         int start = (i * maxTuples) * ENDBYTE + startOfNextBlock; // verify this calculation
         int fileSize = numOfRecords * ENDBYTE;
         raf.seek(start);
-        if ((start + numOfTuplesPerPage * ENDBYTE) > fileSize) {
+        if ((start + (numOfTuplesPerPage * ENDBYTE)) > fileSize) {
           int tempSize = (fileSize - start) / ENDBYTE;
+          if(tempSize == 0) {
+            return false;
+          }
           byte[][] tempBuffer = new byte[tempSize][ENDBYTE];
           for (int j = 0; j < tempSize; j++) {
             raf.readFully(tempBuffer[j]);
@@ -340,8 +346,9 @@ public class TPMMS {
           lastBlock = true;
           return true;
         }
-        for (int j = 0; j < numOfTuplesPerPage; j++)
+        for (int j = 0; j < numOfTuplesPerPage; j++) {
           raf.readFully(buffer[i][j]);
+        }
       }
       return true;
     } catch (Exception e) {
