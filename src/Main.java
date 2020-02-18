@@ -25,15 +25,17 @@ public class Main {
         purge(outputFolder);
         Instant start = Instant.now();
         phaseOne(args[0], args[1]);
-        phaseTwo();
-        try(BufferedReader bufferedReader= Files.newBufferedReader(Paths.get(outputFolder + "/merged_1.txt"));
-        BufferedWriter bufferedWriter= Files.newBufferedWriter(Paths.get(outputFolder + "/merged_2.txt"))) {
+        String finalFile = phaseTwo();
+        Instant dupStart = Instant.now();
+        try(BufferedReader bufferedReader= Files.newBufferedReader(Paths.get(finalFile));
+        BufferedWriter bufferedWriter= Files.newBufferedWriter(Paths.get(outputFolder + "/really_finalFINAL(1).txt"))) {
             UniqueLineIterator uniqueLineIterator = new UniqueLineIterator(bufferedReader);
             String line;
             while ((line = uniqueLineIterator.next())!=null){
                 bufferedWriter.append(line).append("\n");
             }
         }
+        System.out.println("Duplicates removed in " + Duration.between(dupStart, Instant.now()).toMillis());
         System.out.println("Total Time: " + Duration.between(start, Instant.now()).toMillis());
     }
 
@@ -169,7 +171,7 @@ public class Main {
         }
     }
 
-    private static void phaseTwo() {
+    private static String phaseTwo() {
         System.out.println("Phase Two Start");
 
         long startTime2 = System.nanoTime();
@@ -289,7 +291,7 @@ public class Main {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                return;
+                return null;
             } finally {
                 if (inputReaders != null) {
                     inputReaders.forEach(reader -> {
@@ -308,6 +310,7 @@ public class Main {
 
         System.out.printf("Phase Two Finish: Total Time = %.2f(s) %n", ((System.nanoTime() - startTime2) / 1000000000.0));
         System.out.printf("Number Of IO Read = %d, Number Of IO Write = %d %n%n", diskReadCounter, diskWriteCounter);
+        return String.format(Main.outputFolder + "merged_%s.txt", passesCount);
     }
 
 }
