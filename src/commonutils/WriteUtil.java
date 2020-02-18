@@ -17,12 +17,12 @@ public class WriteUtil extends BufferedWriter {
     }
 
     public String getTupleString(Employee tuple) {
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-mm-dd");
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
         return String.format("%1$8d", tuple.empID) +
                 df.format(tuple.lastUpdated) +
                 String.format("%1$-25s", tuple.empName) +
                 String.format("%1$1d", tuple.gender) +
-                String.format("%1$3d", tuple.dept) +
+                String.format("%03d", tuple.dept) +
                 String.format("%1$-9s", tuple.sin) +
                 String.format("%1$-43s", tuple.address);
     }
