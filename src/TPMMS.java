@@ -101,16 +101,9 @@ public class TPMMS {
 
   private void handlePageCalculations() {
     long freeMemoryEstimationPhase1 = (long) Math.ceil(MemoryHandler.getInstance().getFreeMemory());
-
+    numOfTuplesPerPage = 40;
     totalNumOfPages = (int) Math
-        .ceil((numOfRecords * ENDBYTE) / (double) freeMemoryEstimationPhase1);
-    numOfTuplesPerPage = (numOfRecords) / totalNumOfPages;
-
-    // safeguard
-    if (numOfTuplesPerPage > 12500) {
-      numOfTuplesPerPage = 5000;
-      totalNumOfPages = numOfRecords / numOfTuplesPerPage;
-    }
+        .ceil(freeMemoryEstimationPhase1/(numOfTuplesPerPage * ENDBYTE));
   }
 
   private void sortFile(String filePath) throws IOException {
@@ -157,8 +150,8 @@ public class TPMMS {
     RandomAccessFile raf;
 
     long freeMem = MemoryHandler.getInstance().getFreeMemory();
-    int numOfInputBuffers = (int) Math.floor(freeMem / (numOfTuplesPerPage * ENDBYTE)) - 1;
-    numOfInputBuffers = 3;
+    //int numOfInputBuffers = (int) Math.floor(freeMem / (numOfTuplesPerPage * ENDBYTE)*0.8);
+    int numOfInputBuffers = 2;
     System.out.println("NUMBER OF INPUT BUFFERS IS " + numOfInputBuffers);
     int fileSize = numOfRecords * ENDBYTE;
     int totalPasses = (int) Math.ceil(Math.log(fileSize / freeMem) / Math.log(numOfInputBuffers));
@@ -174,7 +167,7 @@ public class TPMMS {
       3rd Pass = 80000
       ....
      */
-    for (int pass = 0; pass <= totalPasses; pass++) {
+    for (int pass = 0; numOfRecords > chunkSize; pass++) {
       this.currentPass = pass;
       lastBlock = false;
       currentChunkPos = 0;
@@ -186,23 +179,25 @@ public class TPMMS {
       int[] runPointers = new int[numOfInputBuffers];
       byte[][][] buffer = new byte[numOfInputBuffers][numOfTuplesPerPage][ENDBYTE];
 
-      // initial read alone
-      for (int i = 0; i < numOfInputBuffers; i++) {
-        int seekVal = i * chunkSize * ENDBYTE;
-        raf.seek(seekVal);
-        if ((seekVal + numOfTuplesPerPage * ENDBYTE) > fileSize) {
-          int tempSize = (fileSize - seekVal) / ENDBYTE;
-          byte[][] tempBuffer = new byte[tempSize][ENDBYTE];
-          for (int j = 0; j < tempSize; j++) {
-            raf.readFully(tempBuffer[j]);
-          }
-          buffer[i] = tempBuffer;
-          break;
-        }
-        for (int j = 0; j < numOfTuplesPerPage; j++) {
-          raf.readFully(buffer[i][j]);
-        }
-      }
+//      // initial read alone
+//      for (int i = 0; i < numOfInputBuffers; i++) {
+//        int seekVal = i * chunkSize * ENDBYTE;
+//        raf.seek(seekVal);
+//        if ((seekVal + numOfTuplesPerPage * ENDBYTE) > fileSize) {
+//          int tempSize = (fileSize - seekVal) / ENDBYTE;
+//          byte[][] tempBuffer = new byte[tempSize][ENDBYTE];
+//          for (int j = 0; j < tempSize; j++) {
+//            raf.readFully(tempBuffer[j]);
+//          }
+//          buffer[i] = tempBuffer;
+//          break;
+//        }
+//        for (int j = 0; j < numOfTuplesPerPage; j++) {
+//          raf.readFully(buffer[i][j]);
+//        }
+//      }
+
+      readNextBlocksInFile("", buffer, numOfTuplesPerPage, numOfInputBuffers, runPointers, chunkSize);
 
 
       // block-wise merging
@@ -432,6 +427,7 @@ public class TPMMS {
           raf.readFully(buffer[i][j]);
         }
       }
+      raf.close();
       return true;
     } catch (Exception e) {
       return false;
@@ -470,6 +466,7 @@ public class TPMMS {
       for (int j = 0; j < numOfTuplesPerPage; j++) {
         raf.readFully(emptyBuffer[exhaustedIndex][j]);
       }
+      raf.close();
     } catch (Exception e) {
       e.printStackTrace();
     }

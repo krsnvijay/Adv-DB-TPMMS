@@ -3,7 +3,7 @@
     <option name="MAIN_CLASS_NAME" value="Main" />
     <module name="Adv-Db-TPMMS" />
     <option name="PROGRAM_PARAMETERS" value="Employee-Generator/Records500K.txt Employee-Generator/records.txt" />
-    <option name="VM_PARAMETERS" value="-Xmx5m" />
+    <option name="VM_PARAMETERS" value="-Xmx10m" />
     <RunnerSettings RunnerId="Run" />
     <ConfigurationWrapper RunnerId="Run" />
     <method v="2">
