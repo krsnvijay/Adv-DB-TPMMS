@@ -3,8 +3,7 @@ import Utils.ReadUtil;
 import Utils.RecordComparator;
 import Utils.WriteUtil;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -16,14 +15,20 @@ public class Main {
     public static short maxFilesToMerge = 80;//TODO:increase to save time
     public static String outputFolder = "Employee-Generator/output/";
     public static byte tuplesPerBlock = 40;
+    private static short batchCounter = 0;
 
     public static void main(String[] args) {
         File outputFolder = new File(Main.outputFolder);
         purge(outputFolder);
         Instant start = Instant.now();
-        phaseOne(args[0]);
+        phaseOne(args[0], args[1]);
         phaseTwo();
         System.out.println("Total Time: " + Duration.between(start, Instant.now()).toMillis());
+    }
+
+    private static void phaseOne(String fileOne, String fileTwo) {
+        makeSublists(fileOne);
+        makeSublists(fileTwo);
     }
 
     public static void purge(File outputFolder) {
@@ -44,7 +49,7 @@ public class Main {
         }
     }
 
-    private static void phaseOne(String fileOne) {
+    private static void makeSublists(String file) {
         System.out.println("Phase One Start");
 
         long phaseOneStart = System.nanoTime();
@@ -55,9 +60,7 @@ public class Main {
         WriteUtil writeUtil = null;
 
         try {
-            readUtil = new ReadUtil(new File(fileOne), preserveMemory1);
-
-            short batchCounter = 0;
+            readUtil = new ReadUtil(new File(file), preserveMemory1);
             long diskReadTimer = 0;
             long diskWriteTimer = 0;
 
