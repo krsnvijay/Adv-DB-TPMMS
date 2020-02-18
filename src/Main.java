@@ -1,9 +1,12 @@
 import Models.Employee;
 import Utils.ReadUtil;
 import Utils.RecordComparator;
+import Utils.UniqueLineIterator;
 import Utils.WriteUtil;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -17,12 +20,20 @@ public class Main {
     public static byte tuplesPerBlock = 40;
     private static short batchCounter = 0;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         File outputFolder = new File(Main.outputFolder);
         purge(outputFolder);
         Instant start = Instant.now();
         phaseOne(args[0], args[1]);
         phaseTwo();
+        try(BufferedReader bufferedReader= Files.newBufferedReader(Paths.get(outputFolder + "/merged_1.txt"));
+        BufferedWriter bufferedWriter= Files.newBufferedWriter(Paths.get(outputFolder + "/merged_2.txt"))) {
+            UniqueLineIterator uniqueLineIterator = new UniqueLineIterator(bufferedReader);
+            String line;
+            while ((line = uniqueLineIterator.next())!=null){
+                bufferedWriter.append(line).append("\n");
+            }
+        }
         System.out.println("Total Time: " + Duration.between(start, Instant.now()).toMillis());
     }
 
