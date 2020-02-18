@@ -1,5 +1,6 @@
 import Models.Employee;
 import Utils.ReadUtil;
+import Utils.RecordComparator;
 import Utils.WriteUtil;
 
 import java.io.File;
@@ -14,7 +15,7 @@ public class Main {
     public static float preserveMemory3 = 0.12f;
     public static short maxFilesToMerge = 80;//TODO:increase to save time
     public static String outputFolder = "Employee-Generator/output/";
-    public static byte tuplesPerBlock = 15;
+    public static byte tuplesPerBlock = 40;
 
     public static void main(String[] args) {
         File outputFolder = new File(Main.outputFolder);
@@ -46,22 +47,22 @@ public class Main {
     private static void phaseOne(String fileOne) {
         System.out.println("Phase One Start");
 
-        long startTime1 = System.nanoTime();
-        int diskReadCounter = 0;
-        int diskWriteCounter =0;
+        long phaseOneStart = System.nanoTime();
+        int diskReads = 0;
+        int diskWrites = 0;
 
-        ReadUtil inputReader = null;
-        WriteUtil outputWriter = null;
+        ReadUtil readUtil = null;
+        WriteUtil writeUtil = null;
 
         try {
-            inputReader = new ReadUtil(new File(fileOne), preserveMemory1);
+            readUtil = new ReadUtil(new File(fileOne), preserveMemory1);
 
             short batchCounter = 0;
             long diskReadTimer = 0;
             long diskWriteTimer = 0;
 
             // Repeatedly fill the M buffers with new tuples form whole file
-            while (!inputReader.done) {
+            while (!readUtil.done) {
                 System.gc();
                 ArrayList<Employee> oneBatch = new ArrayList<>();
 
@@ -69,7 +70,7 @@ public class Main {
 
                 //fill blocks in one batch until run out of memory
                 while (true) {
-                    List<Employee> oneBlock = inputReader.readChunk();
+                    List<Employee> oneBlock = readUtil.readChunk();
                     //finish read or no left memory
                     if (oneBlock.isEmpty()) {
                         break;
@@ -79,14 +80,14 @@ public class Main {
                 diskReadTimer += System.nanoTime() - startTime;
                 // Sort the batch
                 if (!oneBatch.isEmpty()) {
-                    quickSort(oneBatch, 0, oneBatch.size() - 1);
+                    recordSort(oneBatch, 0, oneBatch.size() - 1);
                     // Dump the batch to a file
                     startTime = System.nanoTime();
                     batchCounter++;
-                    outputWriter = new WriteUtil(new File(String.format(outputFolder + "%d.txt", batchCounter)));
-                    outputWriter.writeChunk(oneBatch, tuplesPerBlock);
-                    diskWriteCounter += outputWriter.IOOperations;
-                    outputWriter.close();
+                    writeUtil = new WriteUtil(new File(String.format(outputFolder + "%d.txt", batchCounter)));
+                    writeUtil.writeChunk(oneBatch, tuplesPerBlock);
+                    diskWrites += writeUtil.IOOperations;
+                    writeUtil.close();
                     diskWriteTimer += System.nanoTime() - startTime;
 //                    System.out.printf("Sort batch %d finish, %d tuples tn this batch %n", batchCounter, oneBatch.size());
                 }
@@ -97,25 +98,61 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (inputReader != null) {
-                diskReadCounter = inputReader.IOOperations;
+            if (readUtil != null) {
+                diskReads = readUtil.IOOperations;
                 try {
-                    inputReader.close();
+                    readUtil.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
-            if (outputWriter != null) {
+            if (writeUtil != null) {
                 try {
-                    outputWriter.close();
+                    writeUtil.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }
 
-        System.out.printf("Total Time: %.2f(s) %n", ((System.nanoTime() - startTime1) / 1000000000.0));
-        System.out.printf("Number Of I/O Read = %d, Number Of I/O Write = %d %n%n", diskReadCounter, diskWriteCounter);
+        System.out.printf("Total Time: %.2f(s) %n", ((System.nanoTime() - phaseOneStart) / 1000000000.0));
+        System.out.printf("Number Of I/O Read = %d, Number Of I/O Write = %d %n%n", diskReads, diskWrites);
+    }
+
+    private static boolean shouldSwap(Employee record1, Employee record2) {
+        if (record1.empID < record2.empID) {
+            return true;
+        } else if (record1.empID == record2.empID) {
+            RecordComparator rC = new RecordComparator();
+            return rC.compare(record1.lastUpdated, record2.lastUpdated) < 0;
+        }
+        return false;
+    }
+
+    private static int partition(List<Employee> records, int low, int high) {
+        Employee pivot = records.get(high);
+        int i = (low - 1);
+        for (int j = low; j <= high - 1; j++) {
+            if (shouldSwap(records.get(j), pivot)) {
+                i++;
+                Employee temp = records.get(i);
+                records.set(i, records.get(j));
+                records.set(j, temp);
+            }
+        }
+        Employee temp = records.get(i + 1);
+        records.set((i+1), records.get(high));
+        records.set(high, temp);
+
+        return i + 1;
+    }
+
+    private static void recordSort(List<Employee> records, int low, int high) {
+        if (low < high) {
+            int pivot = partition(records, low, high);
+            recordSort(records, low, pivot - 1);
+            recordSort(records, pivot + 1, high);
+        }
     }
 
     private static void phaseTwo() {
@@ -257,35 +294,6 @@ public class Main {
 
         System.out.printf("Phase Two Finish: Total Time = %.2f(s) %n", ((System.nanoTime() - startTime2) / 1000000000.0));
         System.out.printf("Number Of IO Read = %d, Number Of IO Write = %d %n%n", diskReadCounter, diskWriteCounter);
-    }
-
-    // quick sort base on clientID
-    public static void quickSort(List<Employee> batch, int low, int high) {
-        int i = low, j = high;
-        Employee pivot = batch.get(low + (high - low) / 2);
-        while (i <= j) {
-
-            while (batch.get(i).empID < pivot.empID) {
-                i++;
-            }
-            while (batch.get(j).empID > pivot.empID) {
-                j--;
-            }
-            if (i <= j) {
-                Employee temp = batch.get(i);
-                batch.set(i, batch.get(j));
-                batch.set(j, temp);
-                i++;
-                j--;
-            }
-
-        }
-        if (low < j) {
-            quickSort(batch, low, j);
-        }
-        if (i < high) {
-            quickSort(batch, i, high);
-        }
     }
 
 }

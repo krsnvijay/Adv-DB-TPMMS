@@ -16,7 +16,7 @@ public class ReadUtil extends BufferedReader {
 
     public boolean done;
     public File file;
-    public short tuplesPerChunk = 15;
+    public short tuplesPerChunk = 40;
     public int IOOperations;
     public float preserveMemory;
 
