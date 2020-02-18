@@ -1,6 +1,8 @@
+package Models;
+
 import java.util.Date;
 
-public class Tuple {
+public class Employee {
     public int empID;
     public Date lastUpdated;
     public String empName;
@@ -9,7 +11,7 @@ public class Tuple {
     public String sin;
     public String address;
 
-    public Tuple(int empID, Date lastUpdated, String empName, int gender, int dept, String sin, String address) {
+    public Employee(int empID, Date lastUpdated, String empName, int gender, int dept, String sin, String address) {
         this.empID = empID;
         this.lastUpdated = lastUpdated;
         this.empName = empName;

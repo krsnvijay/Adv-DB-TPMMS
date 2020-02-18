@@ -1,6 +1,11 @@
+import Models.Employee;
+import Utils.ReadUtil;
+import Utils.WriteUtil;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 public class Main {
@@ -8,32 +13,33 @@ public class Main {
     public static float preserveMemory2 = 0.0f;
     public static float preserveMemory3 = 0.12f;
     public static short maxFilesToMerge = 80;//TODO:increase to save time
-    public static String outputPath = "output/";
-    public static byte tupleNumInOneBlock = 15;
+    public static String outputFolder = "Employee-Generator/output/";
+    public static byte tuplesPerBlock = 15;
 
     public static void main(String[] args) {
-        File outputFolder = new File(outputPath);
-        cleanFolder(outputFolder);
-
-        long startTime = System.nanoTime();
+        File outputFolder = new File(Main.outputFolder);
+        purge(outputFolder);
+        Instant start = Instant.now();
         phaseOne(args[0]);
         phaseTwo();
-        System.out.printf("Total Time: %.2f(s) %n", ((System.nanoTime() - startTime) / 1000000000.0));
-
+        System.out.println("Total Time: " + Duration.between(start, Instant.now()).toMillis());
     }
 
-    //clean output folder
-    public static void cleanFolder(File outputFolder) {
-        if (outputFolder.exists()) {
-            for (File file : outputFolder.listFiles()) {
-                if (file.isDirectory()) {
-                    cleanFolder(file);
-                } else {
-                    file.delete();
+    public static void purge(File outputFolder) {
+        try {
+            if (outputFolder.exists()) {
+                for (File file : Objects.requireNonNull(outputFolder.listFiles())) {
+                    if (file.isDirectory()) {
+                        purge(file);
+                    } else {
+                        file.delete();
+                    }
                 }
+            } else {
+                outputFolder.mkdir();
             }
-        } else {
-            outputFolder.mkdir();
+        } catch(Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -44,26 +50,26 @@ public class Main {
         int diskReadCounter = 0;
         int diskWriteCounter =0;
 
-        FileReader inputReader = null;
-        FileWriter outputWriter = null;
+        ReadUtil inputReader = null;
+        WriteUtil outputWriter = null;
 
         try {
-            inputReader = new FileReader(new File(fileOne), preserveMemory1);
+            inputReader = new ReadUtil(new File(fileOne), preserveMemory1);
 
             short batchCounter = 0;
             long diskReadTimer = 0;
             long diskWriteTimer = 0;
 
             // Repeatedly fill the M buffers with new tuples form whole file
-            while (!inputReader.finish) {
+            while (!inputReader.done) {
                 System.gc();
-                ArrayList<Tuple> oneBatch = new ArrayList<>();
+                ArrayList<Employee> oneBatch = new ArrayList<>();
 
                 long startTime = System.nanoTime();
 
                 //fill blocks in one batch until run out of memory
                 while (true) {
-                    List<Tuple> oneBlock = inputReader.getOneBlock();
+                    List<Employee> oneBlock = inputReader.readChunk();
                     //finish read or no left memory
                     if (oneBlock.isEmpty()) {
                         break;
@@ -77,9 +83,9 @@ public class Main {
                     // Dump the batch to a file
                     startTime = System.nanoTime();
                     batchCounter++;
-                    outputWriter = new FileWriter(new File(String.format(outputPath + "%d.txt", batchCounter)));
-                    outputWriter.writeOneBatch(oneBatch, tupleNumInOneBlock);
-                    diskWriteCounter += outputWriter.ioCounter;
+                    outputWriter = new WriteUtil(new File(String.format(outputFolder + "%d.txt", batchCounter)));
+                    outputWriter.writeChunk(oneBatch, tuplesPerBlock);
+                    diskWriteCounter += outputWriter.IOOperations;
                     outputWriter.close();
                     diskWriteTimer += System.nanoTime() - startTime;
 //                    System.out.printf("Sort batch %d finish, %d tuples tn this batch %n", batchCounter, oneBatch.size());
@@ -92,7 +98,7 @@ public class Main {
             e.printStackTrace();
         } finally {
             if (inputReader != null) {
-                diskReadCounter = inputReader.ioCounter;
+                diskReadCounter = inputReader.IOOperations;
                 try {
                     inputReader.close();
                 } catch (IOException e) {
@@ -119,22 +125,22 @@ public class Main {
         int diskReadCounter = 0;
         int diskWriteCounter = 0;
 
-        File outputFolder = new File(outputPath);
+        File outputFolder = new File(Main.outputFolder);
         short passesCount = 0;
 
         while (outputFolder.listFiles().length > 1) {
             ++passesCount;
 //            mergeSortedFiles(outputFolder, ++passesCount);
-            List<FileReader> inputReaders = null;
-            FileWriter outputWriter = null;
+            List<ReadUtil> inputReaders = null;
+            WriteUtil outputWriter = null;
 
             try {
                 int numOfFileToMerge = Math.min(outputFolder.listFiles().length,maxFilesToMerge);
                 inputReaders = new ArrayList<>(numOfFileToMerge);
-                outputWriter = new FileWriter(new File(String.format(outputPath + "merged_%s.txt", passesCount)));
+                outputWriter = new WriteUtil(new File(String.format(Main.outputFolder + "merged_%s.txt", passesCount)));
 
-                List<List<Tuple>> inputBuffers = new ArrayList<>(numOfFileToMerge);
-                List<Tuple> outputBuffer = new ArrayList<>(tupleNumInOneBlock);
+                List<List<Employee>> inputBuffers = new ArrayList<>(numOfFileToMerge);
+                List<Employee> outputBuffer = new ArrayList<>(tuplesPerBlock);
 
                 short fileCount = 0;
 
@@ -142,7 +148,7 @@ public class Main {
                 for (File tempFile : outputFolder.listFiles()) {
                     if (++fileCount > numOfFileToMerge)
                         break;
-                    inputReaders.add(new FileReader(new File(tempFile.getAbsolutePath()), preserveMemory2));
+                    inputReaders.add(new ReadUtil(new File(tempFile.getAbsolutePath()), preserveMemory2));
                     inputBuffers.add(new ArrayList<>());
                 }
 
@@ -152,17 +158,17 @@ public class Main {
 
                     // 1.fills in all input buffers with one block
                     for (int i = 0; i < numOfFileToMerge; i++) {
-                        List<Tuple> oneBuffer = inputBuffers.get(i);
+                        List<Employee> oneBuffer = inputBuffers.get(i);
 //                    System.out.println("one batch size"+oneBatch.size());
                         // finish merge this sublist, move to next
                         if (oneBuffer == null)
                             continue;
                         // one block of input buffer is empty, read next block
                         if (oneBuffer.isEmpty()) {
-                            FileReader reader = inputReaders.get(i);
-                            List<Tuple> oneBlock = reader.getOneBlock();
+                            ReadUtil reader = inputReaders.get(i);
+                            List<Employee> oneBlock = reader.readChunk();
                             // all records in a sublist is finish merge, set to null to ignore
-                            if (oneBlock.isEmpty() && reader.finish) {
+                            if (oneBlock.isEmpty() && reader.done) {
                                 inputBuffers.set(i, null);
                             } else {
                                 allBufferEmpty = false;
@@ -178,13 +184,13 @@ public class Main {
                     if (allBufferEmpty) {
                         // delete all temp files
                         for (int i = 0; i < numOfFileToMerge; i++) {
-                            diskReadCounter += inputReaders.get(i).ioCounter;
+                            diskReadCounter += inputReaders.get(i).IOOperations;
                             inputReaders.get(i).close();
                             inputReaders.get(i).file.delete();
                         }
                         // no tuples in any input buffers, write whatever left in output buffer
                         if (!outputBuffer.isEmpty()) {
-                            outputWriter.writeOneBatch(outputBuffer, tupleNumInOneBlock);
+                            outputWriter.writeChunk(outputBuffer, tuplesPerBlock);
                             outputBuffer.clear();
                         }
                         break;
@@ -193,12 +199,12 @@ public class Main {
                     // 2.keep merging until one buffer is empty
                     while (true) {
                         boolean emptyBuffer = false;
-                        Tuple minClient = null;
+                        Employee minClient = null;
                         short minClientIndex = -1;
 
                         // get local minimum among all input buffers
                         for (short i = 0; i < numOfFileToMerge; i++) {
-                            List<Tuple> oneBuffer = inputBuffers.get(i);
+                            List<Employee> oneBuffer = inputBuffers.get(i);
                             // this sublist done, ignore and merge rest
                             if (oneBuffer == null)
                                 continue;
@@ -208,7 +214,7 @@ public class Main {
                                 break;
                             }
                             // get the first tuple in that buffer
-                            Tuple firstTuple = oneBuffer.get(0);
+                            Employee firstTuple = oneBuffer.get(0);
                             if (minClient == null || minClient.empID > firstTuple.empID ) {
                                 minClient = firstTuple;
                                 minClientIndex = i;
@@ -222,8 +228,8 @@ public class Main {
                         // found one local minimum among first elements of each sublist, write to file
                         outputBuffer.add(minClient);
                         inputBuffers.get(minClientIndex).remove(0);
-                        if (outputBuffer.size() == tupleNumInOneBlock) {
-                            outputWriter.writeOneBatch(outputBuffer, tupleNumInOneBlock);
+                        if (outputBuffer.size() == tuplesPerBlock) {
+                            outputWriter.writeChunk(outputBuffer, tuplesPerBlock);
                             outputBuffer.clear();
                         }
                     }//end find minimum and merge
@@ -241,7 +247,7 @@ public class Main {
                     });
                 }
                 if (outputWriter != null) {
-                    diskWriteCounter = outputWriter.ioCounter;
+                    diskWriteCounter = outputWriter.IOOperations;
                     try { outputWriter.close(); }
                     catch (IOException e) { e.printStackTrace(); }
                 }
@@ -254,9 +260,9 @@ public class Main {
     }
 
     // quick sort base on clientID
-    public static void quickSort(List<Tuple> batch, int low, int high) {
+    public static void quickSort(List<Employee> batch, int low, int high) {
         int i = low, j = high;
-        Tuple pivot = batch.get(low + (high - low) / 2);
+        Employee pivot = batch.get(low + (high - low) / 2);
         while (i <= j) {
 
             while (batch.get(i).empID < pivot.empID) {
@@ -266,7 +272,7 @@ public class Main {
                 j--;
             }
             if (i <= j) {
-                Tuple temp = batch.get(i);
+                Employee temp = batch.get(i);
                 batch.set(i, batch.get(j));
                 batch.set(j, temp);
                 i++;
