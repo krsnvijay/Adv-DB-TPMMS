@@ -236,8 +236,8 @@ public class Main {
                     // 2.keep merging until one buffer is empty
                     while (true) {
                         boolean emptyBuffer = false;
-                        Employee minClient = null;
-                        short minClientIndex = -1;
+                        Employee minTuple = null;
+                        short minTupleIndex = -1;
 
                         // get local minimum among all input buffers
                         for (short i = 0; i < numOfFileToMerge; i++) {
@@ -252,9 +252,9 @@ public class Main {
                             }
                             // get the first tuple in that buffer
                             Employee firstTuple = oneBuffer.get(0);
-                            if (minClient == null || minClient.empID > firstTuple.empID ) {
-                                minClient = firstTuple;
-                                minClientIndex = i;
+                            if (minTuple == null || shouldSwap(firstTuple, minTuple)) {
+                                minTuple = firstTuple;
+                                minTupleIndex = i;
                             }
                         }
 
@@ -263,8 +263,8 @@ public class Main {
                             break;
 
                         // found one local minimum among first elements of each sublist, write to file
-                        outputBuffer.add(minClient);
-                        inputBuffers.get(minClientIndex).remove(0);
+                        outputBuffer.add(minTuple);
+                        inputBuffers.get(minTupleIndex).remove(0);
                         if (outputBuffer.size() == tuplesPerBlock) {
                             outputWriter.writeChunk(outputBuffer, tuplesPerBlock);
                             outputBuffer.clear();
