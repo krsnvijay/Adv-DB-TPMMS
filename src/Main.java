@@ -62,7 +62,7 @@ public class Main {
         }
     }
 
-    private static void makeSublists(String file) {
+    public static void makeSublists(String file) {
         System.out.println("Phase One Start");
 
         long phaseOneStart = System.nanoTime();
@@ -171,7 +171,7 @@ public class Main {
         }
     }
 
-    private static String phaseTwo() {
+    public static String phaseTwo() {
         System.out.println("Phase Two Start");
 
         long startTime2 = System.nanoTime();

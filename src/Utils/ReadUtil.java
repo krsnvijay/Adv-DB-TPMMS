@@ -28,7 +28,7 @@ public class ReadUtil extends BufferedReader {
 
     private Employee serialize(String line) {
         try {
-            SimpleDateFormat df = new SimpleDateFormat("yyyy-mm-dd");
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
             int empId = Integer.parseInt(line.substring(0, 8));
             Date lastUpdated = df.parse(line.substring(8, 18));
             String empName = line.substring(18, 43).trim();
