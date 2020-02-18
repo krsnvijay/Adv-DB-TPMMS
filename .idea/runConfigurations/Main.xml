@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Main" type="Application" factoryName="Application">
-    <option name="MAIN_CLASS_NAME" value="Main" />
+    <option name="MAIN_CLASS_NAME" value="driver.MultiWayMergeSortDriver" />
     <module name="Adv-Db-TPMMS" />
-    <option name="PROGRAM_PARAMETERS" value="Employee-Generator/Record1MIL.txt Employee-Generator/Records500K.txt" />
+    <option name="PROGRAM_PARAMETERS" value="Employee-Generator/Records500K.txt Employee-Generator/Records500K.txt" />
     <option name="VM_PARAMETERS" value="-Xmx10m" />
     <RunnerSettings RunnerId="Run" />
     <ConfigurationWrapper RunnerId="Run" />

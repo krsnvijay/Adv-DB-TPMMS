@@ -13,12 +13,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 
 public class MultiWayMergeSortDriver {
 
     public static void main(String[] args) throws IOException {
         File outputFolder = new File(Constants.OUTPUT_DIR);
-
+        purge(outputFolder);
         Instant start = Instant.now();
         // PHASE 1 start...
         PhaseOne.phaseOne(args[0], args[1]);
@@ -41,6 +42,24 @@ public class MultiWayMergeSortDriver {
             }
         }
         System.out.println("Duplicates removed in " + Duration.between(dupStart, Instant.now()).toMillis());
+    }
+
+    public static void purge(File outputFolder) {
+        try {
+            if (outputFolder.exists()) {
+                for (File file : Objects.requireNonNull(outputFolder.listFiles())) {
+                    if (file.isDirectory()) {
+                        purge(file);
+                    } else {
+                        file.delete();
+                    }
+                }
+            } else {
+                outputFolder.mkdir();
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }

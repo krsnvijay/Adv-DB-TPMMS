@@ -43,7 +43,7 @@ public class PhaseOne {
                 ioWrites);
     }
 
-    private static String makeSublists(String file, int ioReads, int ioWrites, long ioReadTimer, long ioWriteTimer) {
+    public static String makeSublists(String file, int ioReads, int ioWrites, long ioReadTimer, long ioWriteTimer) {
         try (ReadUtil readUtil = new ReadUtil(new File(file))){
             while (!readUtil.done) {
                 System.gc();

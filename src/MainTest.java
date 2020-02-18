@@ -13,10 +13,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import Utils.LineDateComparator;
-import Utils.UniqueLineIterator;
+import commonutils.Constants;
+import commonutils.LineDateComparator;
+import commonutils.UniqueLineIterator;
+import driver.MultiWayMergeSortDriver;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import phaseone.PhaseOne;
+import phasetwo.PhaseTwo;
 
 class MainTest {
     Comparator<String> empIdComparator = Comparator
@@ -25,14 +29,14 @@ class MainTest {
     @Test
     void phaseOneTest() throws IOException {
         // Dont forget to limit Memory to 5m when running this test
-        File outputFolder = new File(Main.outputFolder);
-        Main.purge(outputFolder);
+        File outputFolder = new File(Constants.OUTPUT_DIR);
+        MultiWayMergeSortDriver.purge(outputFolder);
         String path = "Employee-Generator/sample-500.txt";
 
         BufferedReader br = new BufferedReader(Files.newBufferedReader(Paths.get(path)));
         ArrayList<String> sortedRecords = br.lines().sorted(empIdComparator).collect(Collectors.toCollection(ArrayList::new));
         br.close();
-        Main.makeSublists(path);
+        PhaseOne.makeSublists(path,0,0,0,0);
         for (File file : Objects.requireNonNull(outputFolder.listFiles())) {
             br =  new BufferedReader(Files.newBufferedReader(file.toPath()));
             ArrayList<String> actualRecords = br.lines().collect(Collectors.toCollection(ArrayList::new));
@@ -43,11 +47,11 @@ class MainTest {
     @Test
     void phaseTwoTest() throws IOException{
         // Dont forget to limit Memory to 2m when running this test
-        File outputFolder = new File(Main.outputFolder);
-        Main.purge(outputFolder);
+        File outputFolder = new File(Constants.OUTPUT_DIR);
+        MultiWayMergeSortDriver.purge(outputFolder);
         String path = "Employee-Generator/sample-500.txt";
-        Main.makeSublists(path);
-        String mergedPath = Main.phaseTwo();
+        PhaseOne.makeSublists(path,0,0,0,0);
+        String mergedPath = PhaseTwo.phaseTwo();
         File mergedFile = new File(mergedPath);
         BufferedReader bufferedReader = Files.newBufferedReader(mergedFile.toPath());
         ArrayList<String> mergedLines = bufferedReader.lines().collect(Collectors.toCollection(ArrayList::new));
