@@ -23,7 +23,9 @@ public class Main {
         }
         Instant start = Instant.now();
         Sorter sorter = new Sorter();
-        sorter.sort(args[0],40);
+        String pathToT1 = sorter.sort("f1",args[0],40);
+        String pathToT2 = sorter.sort("f2",args[1],40);
+        sorter.merge(pathToT1,pathToT2);
 //        TPMMS tpmms = new TPMMS();
 //        tpmms.runTPMMS(args[0]);
         Instant end = Instant.now();

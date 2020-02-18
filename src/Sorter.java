@@ -3,6 +3,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 
@@ -17,15 +18,9 @@ public class Sorter {
     AVAILABLE_MEMORY = Runtime.getRuntime().freeMemory();
   }
 
-  void read(String path) {
-    // read from a file or directory
-  }
 
-  void write(String path) {
-    // write to a file or directory
-  }
+  public String sort(String prefix, String inputPath, int blockSize) throws IOException {
 
-  void sort(String inputPath, int blockSize) throws IOException {
     File inputFile = new File(inputPath);
     long fileLength = inputFile.length();
     int numOfTuples = Math.round((float) fileLength / TUPLE_SIZE);
@@ -34,14 +29,16 @@ public class Sorter {
     int numOfTuplesInMem = numOfBlocksInMem * (int) (blockSize);
     int totalPasses = (int) Math
         .ceil(Math.log((float) fileLength / (blockSize * TUPLE_SIZE)) / Math.log(numOfBlocksInMem));
-
+    String outputPath = "";
     for (int i = 0; i <= totalPasses; i++) {
-      File outputFile = new File(path + "-" + blockSize + ".txt");
+      outputPath = path + "-" + prefix + "-" + blockSize + ".txt";
+      File outputFile = new File(outputPath);
       readFile(blockSize, inputFile, outputFile);
       inputFile = new File(outputFile.toString());
       blockSize *= numOfBlocksInMem;
       // from 40 blocks read 1 tuple each
     }
+    return outputPath;
 
   }
 
@@ -74,19 +71,56 @@ public class Sorter {
     pq.clear();
   }
 
-  void merge(String path) {
-    File file = new File(path);
-    long fileLength = file.length();
-    int numOfTuples = (int) fileLength / TUPLE_SIZE;
-    int numOfBlocksInFile = numOfTuples / BLOCK_SIZE;
-    int numOfBlocksInMem = (int) AVAILABLE_MEMORY / (BLOCK_SIZE * TUPLE_SIZE);
-    int numOfTuplesInMem = numOfBlocksInMem * (int) (BLOCK_SIZE * .6f);
-    File tempFile = new File("Employee-Generator/out/phase-2/tuples");
-    // load blocks from file to input buffer//
-    // merge them from low to high
+  void merge(String pathToT1, String pathToT2) throws IOException {
+    Comparator<String> empIdComparator = Comparator
+        .comparing((String record) -> Integer.parseInt(record.substring(0, 8)))
+        .thenComparing(new RecordComparator());
+    try (BufferedReader brT1 = Files.newBufferedReader(Paths.get(pathToT1));
+        BufferedReader brT2 = Files.newBufferedReader(Paths.get(pathToT2));
+        BufferedWriter bwT3 = Files
+            .newBufferedWriter(
+                Paths.get(path + "-final-no-duplicates.txt"))) {
+
+      UniqueLineIterator file1UniqueIterator = new UniqueLineIterator(brT1);
+      UniqueLineIterator file2UniqueIterator = new UniqueLineIterator(brT2);
+
+      String T1line = file1UniqueIterator.next();
+      String T2line = file2UniqueIterator.next();
+
+      while (true) {
+        if (T1line == null && T2line != null) {
+          // if T1 is exhausted, dump T2
+          bwT3.append(T2line).append("\n");
+          T2line = file2UniqueIterator.next();
+        } else if (T1line != null && T2line == null) {
+          // if T2 is exhausted, dump T1
+          bwT3.append(T1line).append("\n");
+          T1line = file1UniqueIterator.next();
+        } else if (T1line != null && T2line != null) {
+          // if both arent exhausted compare them
+          boolean result = empIdComparator.compare(T1line, T2line) >= 0;
+          if (result) {
+            bwT3.append(T1line).append("\n");
+            // if tuples from both files have the same empID remove them
+            if (T2line.startsWith(T1line.substring(0, 8))) {
+              T2line = file2UniqueIterator.next();
+            }
+            T1line = file1UniqueIterator.next();
+          } else {
+            bwT3.append(T2line).append("\n");
+            // if tuples from both files have the same empID remove them
+            if (T1line.startsWith(T2line.substring(0, 8))) {
+              T1line = file1UniqueIterator.next();
+            }
+            T2line = file2UniqueIterator.next();
+          }
+        } else {
+          break;
+        }
+      }
+    }
+
   }
 
-  void unique(String dirPath) {
-    // if two ids are same keep the latest record
-  }
+
 }
