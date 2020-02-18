@@ -1,7 +1,5 @@
-package Utils;
+package commonutils;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Comparator;
 import java.util.Date;
 

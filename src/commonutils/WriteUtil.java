@@ -1,6 +1,6 @@
-package Utils;
+package commonutils;
 
-import Models.Employee;
+import models.Employee;
 
 import java.io.BufferedWriter;
 import java.io.File;

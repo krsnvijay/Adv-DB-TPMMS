@@ -1,6 +1,6 @@
-package Utils;
+package commonutils;
 
-import Models.Employee;
+import models.Employee;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,17 +12,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class ReadUtil extends BufferedReader {
+public class ReadUtil extends BufferedReader  {
 
     public boolean done;
     public File file;
     public short tuplesPerChunk = 40;
     public int IOOperations;
-    public float preserveMemory;
 
-    public ReadUtil(File file, float preserveMemPercentage) throws FileNotFoundException {
+    public ReadUtil(File file) throws FileNotFoundException {
         super(new java.io.FileReader(file));
-        this.preserveMemory = Runtime.getRuntime().maxMemory() * preserveMemPercentage;
         this.file = file;
     }
 
@@ -45,7 +43,7 @@ public class ReadUtil extends BufferedReader {
 
     public List<Employee> readChunk() {
         List<Employee> chunk = new ArrayList<>(tuplesPerChunk);
-        if (Runtime.getRuntime().freeMemory() > preserveMemory) {
+        if (Runtime.getRuntime().freeMemory() > Runtime.getRuntime().maxMemory()*0.15f) {
             for (int i = 0; i < tuplesPerChunk; i++) {
                 Employee tuple = readTuple();
                 if (tuple == null)
