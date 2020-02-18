@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="MainTest.comparatorTest" type="JUnit" factoryName="JUnit" nameIsGenerated="true">
+    <module name="Adv-Db-TPMMS" />
+    <useClassPathOnly />
+    <option name="PACKAGE_NAME" value="" />
+    <option name="MAIN_CLASS_NAME" value="MainTest" />
+    <option name="METHOD_NAME" value="comparatorTest" />
+    <option name="TEST_OBJECT" value="method" />
+    <option name="PARAMETERS" value="" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
