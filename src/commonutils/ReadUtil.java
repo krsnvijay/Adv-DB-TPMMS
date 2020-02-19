@@ -35,8 +35,8 @@ public class ReadUtil extends BufferedReader  {
             String sin = line.substring(47, 56).trim();
             String address = line.substring(56, 99).trim();
             return new Employee(empId, lastUpdated, empName, gender, dept, sin, address);
-        } catch (ParseException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Error processing the file:" + e.getMessage());
             return null;
         }
     }
@@ -64,8 +64,8 @@ public class ReadUtil extends BufferedReader  {
                 return null;
             }
             return serialize(nextLine);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Error processing the file:" + e.getMessage());
             done = true;
             return null;
         }

@@ -7,6 +7,8 @@ import commonutils.WriteUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,8 +18,9 @@ public class PhaseOne {
     private static short batchCounter = 0;
 
     public static void phaseOne(String fileOne, String fileTwo) {
-        System.out.println("Phase One Start");
-        long phaseOneStart = System.nanoTime();
+        System.out.println("-- PHASE ONE --");
+        System.out.println("RUNNING .....");
+        Instant phaseOneStart = Instant.now();
         int ioReads = 0;
         int ioWrites = 0;
         long diskReadTimer = 0;
@@ -30,13 +33,14 @@ public class PhaseOne {
         ioReads = Integer.parseInt(phaseOneMetricsFile1.split(" ")[2]) + Integer.parseInt(phaseOneMetricsFile2.split(" ")[2]);
         ioWrites = Integer.parseInt(phaseOneMetricsFile1.split(" ")[3]) + Integer.parseInt(phaseOneMetricsFile2.split(" ")[3]);
         System.out.printf("-- Phase One Metrics --\nNumber Of Temp. Sorted Files written - %d\n" +
-                        "Exec. Time -- %.4f\n" +
+                        "Exec. Time -- %.4f seconds\n" +
                         "IO Reads took %.4f seconds\n" +
                         "IO Writes took %.4f seconds\n" +
                         "Total Disk Reads -- %d\n" +
-                        "Total Disk Writes -- %d\n",
+                        "Total Disk Writes -- %d\n" +
+                        "~ PHASE ONE END ~\n",
                 batchCounter,
-                (System.nanoTime() - phaseOneStart) / Constants.TIME_CALC_FACTOR,
+                Duration.between(phaseOneStart, Instant.now()).toMillis() / Constants.TIME_CALC_FACTOR,
                 diskReadTimer / Constants.TIME_CALC_FACTOR,
                 diskWriteTimer / Constants.TIME_CALC_FACTOR,
                 ioReads,
@@ -49,7 +53,7 @@ public class PhaseOne {
                 System.gc();
                 ArrayList<Employee> oneBatch = new ArrayList<>();
 
-                long startTime = System.nanoTime();
+                Instant startTime = Instant.now();
                 while (true) {
                     List<Employee> oneBlock = readUtil.readChunk();
                     if (oneBlock.isEmpty()) {
@@ -57,22 +61,22 @@ public class PhaseOne {
                     }
                     oneBatch.addAll(oneBlock);
                 }
-                ioReadTimer += System.nanoTime() - startTime;
+                ioReadTimer += Duration.between(startTime, Instant.now()).toMillis();
                 if (!oneBatch.isEmpty()) {
                     recordSort(oneBatch, 0, oneBatch.size() - 1);
-                    startTime = System.nanoTime();
+                    startTime = Instant.now();
                     batchCounter++;
-                    try(WriteUtil writeUtil = new WriteUtil(new File(String.format(Constants.OUTPUT_DIR + "%d.txt", batchCounter)))) {
+                    try(WriteUtil writeUtil = new WriteUtil(new File(String.format(Constants.OUTPUT_DIR + "sublist-%d.txt", batchCounter)))) {
                         writeUtil.writeChunk(oneBatch, Constants.TUPLES_PER_BLOCK);
                         ioWrites += writeUtil.IOOperations;
                         writeUtil.close();
-                        ioWriteTimer += System.nanoTime() - startTime;
+                        ioWriteTimer += Duration.between(startTime, Instant.now()).toMillis();
                     }
                 }
             }
             ioReads = readUtil.IOOperations;
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Error processing the file:" + e.getMessage());
         }
         return String.format("%d %d %d %d", ioReadTimer, ioWriteTimer, ioReads, ioWrites);
     }

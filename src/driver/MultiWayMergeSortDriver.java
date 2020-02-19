@@ -18,6 +18,8 @@ import java.util.Objects;
 public class MultiWayMergeSortDriver {
 
     public static void main(String[] args) throws IOException {
+        System.out.println("T1 file @ "+args[0]);
+        System.out.println("T2 file @ "+args[1]);
         File outputFolder = new File(Constants.OUTPUT_DIR);
         purge(outputFolder);
         Instant start = Instant.now();
@@ -27,21 +29,33 @@ public class MultiWayMergeSortDriver {
         String finalFile = PhaseTwo.phaseTwo();
         // DUPLICATE ELIMINATION start...
         eliminateDuplicatesAfterMerge(outputFolder, finalFile);
+        // To purge the final merged file
+        purgeFinalMergedFile(finalFile);
+        System.out.println("-- Final Metrics --");
+        System.out.println("Total Exec. Time -- " + Duration.between(start, Instant.now()).toMillis() / Constants.TIME_CALC_FACTOR + " seconds");
+        System.out.println("Final Output File @ " + outputFolder + "\\FINAL_OUTPUT.txt");
+        System.out.println("Free Memory @ end of execution -- " + Runtime.getRuntime().freeMemory()/(1024*1024) + "MB");
 
-        System.out.println("Total Time: " + Duration.between(start, Instant.now()).toMillis());
+    }
+
+    private static void purgeFinalMergedFile(String finalFile) {
+        File mergedFileToDelete = new File(finalFile);
+        mergedFileToDelete.delete();
     }
 
     private static void eliminateDuplicatesAfterMerge(File outputFolder, String finalFile) throws IOException {
         Instant dupStart = Instant.now();
         try (BufferedReader bufferedReader = Files.newBufferedReader(Paths.get(finalFile));
-             BufferedWriter bufferedWriter = Files.newBufferedWriter(Paths.get(outputFolder + "/really_finalFINAL(1).txt"))) {
+             BufferedWriter bufferedWriter = Files.newBufferedWriter(Paths.get(outputFolder + "/FINAL_OUTPUT.txt"))) {
             UniqueLineIterator uniqueLineIterator = new UniqueLineIterator(bufferedReader);
             String line;
             while ((line = uniqueLineIterator.next()) != null) {
                 bufferedWriter.append(line).append("\n");
             }
+            System.out.println("Total Duplicates removed -- " + uniqueLineIterator.getCounter());
+
         }
-        System.out.println("Duplicates removed in " + Duration.between(dupStart, Instant.now()).toMillis());
+        System.out.println("Duplicates removed in -- " + Duration.between(dupStart, Instant.now()).toMillis() / Constants.TIME_CALC_FACTOR + " seconds");
     }
 
     public static void purge(File outputFolder) {
@@ -57,8 +71,9 @@ public class MultiWayMergeSortDriver {
             } else {
                 outputFolder.mkdir();
             }
-        } catch(Exception e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Error processing the file:" + e.getMessage());
+
         }
     }
 

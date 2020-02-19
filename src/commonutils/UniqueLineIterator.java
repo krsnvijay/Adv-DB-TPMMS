@@ -39,13 +39,19 @@ public class UniqueLineIterator implements Iterator<String> {
             while (line.startsWith(newLine.substring(0, 8))) {
                 line = newLine;
                 newLine = br.readLine();
+                counter++;
                 if (newLine == null) {
                     break;
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Error processing the file:" + e.getMessage());
+
         }
         return pop();
+    }
+
+    public int getCounter() {
+        return counter;
     }
 }

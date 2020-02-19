@@ -44,8 +44,8 @@ public class WriteUtil extends BufferedWriter {
                     }
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Error processing the file:" + e.getMessage());
         }
     }
 

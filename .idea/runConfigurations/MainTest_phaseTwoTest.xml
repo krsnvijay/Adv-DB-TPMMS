@@ -6,7 +6,7 @@
     <option name="MAIN_CLASS_NAME" value="MainTest" />
     <option name="METHOD_NAME" value="phaseTwoTest" />
     <option name="TEST_OBJECT" value="method" />
-    <option name="VM_PARAMETERS" value="-ea -Xmx2m" />
+    <option name="VM_PARAMETERS" value="-ea -Xmx1m" />
     <option name="PARAMETERS" value="" />
     <method v="2">
       <option name="Make" enabled="true" />

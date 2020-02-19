@@ -15,8 +15,9 @@ public class LineDateComparator implements Comparator<String> {
             Date recADate = simpleDateFormat.parse(recordA.substring(8, 18));
             Date recBDate = simpleDateFormat.parse(recordB.substring(8, 18));
             return recADate.compareTo(recBDate);
-        } catch (ParseException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Error processing the file:" + e.getMessage());
+
         }
         return 0;
     }
